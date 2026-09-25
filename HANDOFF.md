@@ -24,7 +24,7 @@ Firmware is written, unit-tested (29/29 native, container run), simulated closed
 |---|---|
 | MCU | ESP32-S3-DevKitC-1 clone, WROOM-1-N8R8 (YEJMKJ 2-pack, received 2026-09-23) |
 | Supply | one 12 V 2 A adapter; 5 V logic rail from an LM2596; no separate blower adapter |
-| Blower | Delta BFB0712HH-AWPH, 12 V, 15.3 CFM free air, 0.98 inH2O max static, 4400 RPM, 4-wire PWM + tach. Outlet 24.1 x 17.5 mm (spec drawing), bare 300 mm leads RED 12 V, BLACK GND, BLUE PWM, YELLOW FG. Doc 07 says ordered 2026-09-24; not received. Order the exact string, BFB0712H is a different 2-wire fan (doc 07 A1a) |
+| Blower | Delta BFB0712HH-AWPH, 12 V, 15.3 CFM free air, 0.98 inH2O max static, 4400 RPM, 4-wire PWM + tach. Outlet 24.1 x 17.5 mm (spec drawing), bare 300 mm leads RED 12 V, BLACK GND, BLUE PWM, YELLOW FG. ORDERED (confirmed 2026-09-25), not received. Order the exact string, BFB0712H is a different 2-wire fan (doc 07 A1a) |
 | Blower adapter | Printed transition, fan outlet to a 23.8 mm OD stub so the same 1 in ID hose and worm clamps fit both ends. output\3d-print\blower-adapter-delta-BFB0712HH-to-1in-duct-v1.stl, submitted 2026-09-25 to Arlington Public Library The Shop in PLA. PLA is fit-check and first-cook only; reprint PETG or ABS if the duct inlet runs warm |
 | Fan drive | 2N7000 open-drain on the PWM lead at 25 kHz, duty inverted. IRLZ44N in the fan BLACK lead as a fault-only supply cut. Never chop a brushless fan's supply for speed |
 | Over-temp backstop | existing Gumsung capillary thermostat (label 03-3203 5, catalog GS-320S) stays in series with the fan supply, dial above max cook target |
@@ -108,7 +108,7 @@ Running the whole loop with no wiring: flash, then `t 25`, `s 110`, `c`, and wat
 Boot, LEDC, NVS load and save, task watchdog, NimBLE start and pairing window, sensor-absence detection, the simulated-probe loop, IGNITE -> RAMP -> HOLD -> LID_OPEN with correct timings, the 200 C software over-temp fault and its latching, and refusal of startCook while a fault is latched. Detail and the timing table are in doc 05.
 
 ## 8. Blocked, in the order that unblocks the most
-Purchasing status 2026-09-25 (doc 07): everything for the first cook is ordered. Mouser order 1 placed with BB830 breadboards x2 and 2N7000 x20. Doc 07 is contradictory on whether the blower, 1N5822, jumper kit and ADS1115 have been placed (its STATUS line says all ordered, its ORDER 1 STATUS line says they still need a second Mouser order); confirm against the Mouser account before assuming either.
+Purchasing status 2026-09-25 (doc 07, confirmed by Jason): everything for the first cook is ordered, Mouser lines, local hose and clamps, flap sheet, and the adapter print. Nothing left to buy until a measurement forces it (doc 07 "Still blocked").
 1. Breadboard and jumpers (doc 07 A13): ORDERED 2026-09-25, in transit. Blocks every wired bench step until it lands.
 2. Delta blower (doc 07 A1), fan drive 2N7000s (A2, ordered), 1 in ID hose and clamps (A3, local), flap silicone sheet (A4, local), and the printed adapter (A3, print submitted). Confirm the fan outlet is 24.1 x 17.5 mm with calipers on arrival; if not, rerun gen_adapter.py with the measured numbers.
 3. Thermostat continuity check: which of the three spade tabs is the pair closed at room temperature, and where it actually trips.

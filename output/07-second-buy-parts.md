@@ -93,9 +93,7 @@ B4 CLOSED: 10 k 1 percent resistors are on hand. Use them and calibrate in ice a
 method. Do not buy 0.1 percent parts.
 Mouser's US free-shipping threshold is NOT VERIFIED; their shipping help page was unavailable when checked.
 
-RECONCILE (noted 2026-09-25 evening): the STATUS line above says every remaining Mouser line is placed; the ORDER 1 STATUS line below says the blower, 1N5822, jumper kit and ADS1115 still need a second order. Both were written the same day. Check the Mouser order history and delete whichever line is wrong.
-
-ORDER 1 STATUS 2026-09-25: placed with only two lines, 854-BB830 x2 and 512-2N7000 x20. That unblocks the bench but the blower 108-BFB0712HH-AWPH, the 1N5822, the jumper kit and the ADS1115 were NOT on it, so they need a second Mouser order. Add them to the existing order before it ships if Mouser allows it, otherwise batch them with the buzzer and button once those are picked, and do not place that order until they are.
+ORDER 1 STATUS 2026-09-25 (confirmed by Jason, evening): all lines placed. An earlier note that only the breadboards and 2N7000s had gone in was superseded the same day.
 
 ### Order 2, local, one trip, no shipping
 1 in ID heater hose (1 ft) and four worm clamps from an auto parts counter; silicone sheet 0.4 to 0.5 mm for the
