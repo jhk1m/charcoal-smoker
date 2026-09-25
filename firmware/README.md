@@ -1,8 +1,10 @@
 # charcoal-smoker firmware (Phase 1)
 
-Temperature-controlled charcoal smoker controller. ESP32 (WROOM-32 dev board on the bench now; ESP32-S3 DevKitC-1 clone supported), PWM-driven 6 V blower, K-type pit probe on a MAX31855 or MAX31856, BLE GATT server for control and telemetry.
+Temperature-controlled charcoal smoker controller. ESP32-S3 DevKitC-1 clone (N8R8) is the bench board as of 2026-09-23; WROOM-32 and Freenove WROVER maps remain as fallbacks. Blower: Delta BFB0712HH-AWPH 12 V 4-wire (decided 2026-09-24, not yet fitted); the code currently still drives the old 2-wire 6 V blower. K-type pit probe on a MAX31855 or MAX31856, BLE GATT server for control and telemetry, serial bench console.
 
-Design docs live in the Claude project (`claude/01` to `claude/07`). This README covers the code only.
+Start at `..\HANDOFF.md` for project state, decided hardware, the build and flash commands, the console command set, and what is blocked. Design docs live in the Claude project (`claude/00-handoff` to `claude/09-open-items-and-gaps`) and are mirrored in `..\output\`. This README covers the code only.
+
+Bench env to use: `s3-n8r8-uart-max31855` (Serial on the CH343 UART bridge, VID 1A86). The `s3-n8r8*` envs route Serial to the native USB port (VID 303A) instead.
 
 ## Toolchain (VERIFIED 2026-09-20)
 
@@ -34,17 +36,19 @@ python -m pip install --user platformio
 Then from this directory:
 
 ```powershell
-pio run                      # default env: freenove-wrover-max31855 (hardware on hand 2026-09-24)
-pio test -e native
-pio run -t upload
-pio device monitor -b 115200
+pio run -e s3-n8r8-uart-max31855 -t upload --upload-port COM6   # bench env; COM number from pio device list
+pio device monitor -e s3-n8r8-uart-max31855 --port COM6
+pio test -e native            # needs a host gcc/g++ on PATH; not installed on JASON-PC as of 2026-09-25
 ```
 
-Build environments (`platformio.ini`), all VERIFIED to compile 2026-09-24 in a clean container:
+Local build result 2026-09-25 (JASON-PC): `s3-n8r8-uart-max31855` SUCCESS, RAM 11.7 percent (38360 B), Flash 19.4 percent (647610 B). Native tests: 29/29 in the clean container; blocked locally by the missing host compiler (doc 09 B4).
+
+Build environments (`platformio.ini`), all VERIFIED to compile 2026-09-24 in a clean container. `default_envs = s3-n8r8-max31855`.
 
 | env | board | pit sensor | when |
 |---|---|---|---|
-| `freenove-wrover-max31855` (default) | Freenove ESP32-WROVER camera board | MAX31855, hardware SPI read-only | bench now (pins 14/33/13/32, PWM 2) |
+| `s3-n8r8-uart-max31855` | ESP32-S3-DevKitC-1 N8R8, Serial on the CH343 UART bridge | MAX31855 | BENCH ENV, validated on hardware 2026-09-25 |
+| `freenove-wrover-max31855` | Freenove ESP32-WROVER camera board | MAX31855, hardware SPI read-only | fallback (pins 14/33/13/32, PWM 2) |
 | `freenove-wrover` | Freenove ESP32-WROVER | MAX31856 | same board, MAX31856 |
 | `wroom32-max31855` | ESP32-WROOM-32 (no camera) | MAX31855 | plain WROOM boards |
 | `wroom32` | ESP32-WROOM-32 | MAX31856 (Adafruit lib) | when the MAX31856 boards land |

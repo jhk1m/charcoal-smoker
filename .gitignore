@@ -8,6 +8,6 @@
 # FUSE leftovers from editing files that were open elsewhere
 .fuse_hidden*
 # compiled simulation binary
-sim/sim
+firmware/sim/sim
 # regenerable simulation traces; the PNGs and json summaries are kept
-sim/out/*.csv
+firmware/sim/out/*.csv
