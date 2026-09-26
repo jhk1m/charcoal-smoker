@@ -10,7 +10,7 @@ CORRECTION 2026-09-24, corrected again 2026-09-25: this list said a breadboard w
 ORDERED, Amazon, 2026-09-19:
 - YEJMKJ ESP32-S3 N8R8 2-pack (order 111-7872990-3981853). RECEIVED 2026-09-23. 1 in use, 1 spare. Flashed and validated 2026-09-25 (doc 05).
 - Generic MAX31856 breakout 2-pack (arriving 2026-09-29 to 10-02). NOT YET RECEIVED.
-- HUABAN MAX31855 2-pack (order 111-5592486-4043419). RECEIVED 2026-09-23. Now the default sensor for bench work; the firmware has a MAX31855 backend (build flag -DPIT_SENSOR_MAX31855, default env s3-n8r8-uart-max31855).
+- HUABAN MAX31855 2-pack (order 111-5592486-4043419). RECEIVED 2026-09-23. Default sensor for bench work; the firmware has a MAX31855 backend (build flag -DPIT_SENSOR_MAX31855, default env s3-n8r8-uart-max31855). ONE BOARD DEFECTIVE (recorded 2026-09-26): with T+ (yellow) shorted to T- (red) the thermocouple reading was more than 21 C away from the cold-junction reading; a good MAX31855 reads the two within about 2 C on a shorted input. Mark that board and keep it out of the bench. Which of the two it is, which MCU it was tested on, and whether the second board passed are not recorded; test the second board the same way before relying on it (doc 09 M8).
 
 ORDERED, Amazon, 2026-09-20:
 | ASIN | Item | Price |

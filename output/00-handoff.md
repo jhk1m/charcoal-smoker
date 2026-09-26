@@ -28,7 +28,7 @@ Firmware is written, unit-tested (29/29 native, container run), simulated closed
 | Blower adapter | Printed transition, fan outlet to a 23.8 mm OD stub so the same 1 in ID hose and worm clamps fit both ends. output\3d-print\blower-adapter-delta-BFB0712HH-to-1in-duct-v1.stl, submitted 2026-09-25 to Arlington Public Library The Shop in PLA, print in progress. PLA is fit-check and first-cook only; reprint PETG or ABS if the duct inlet runs warm |
 | Fan drive | 2N7000 open-drain on the PWM lead at 25 kHz, duty inverted. IRLZ44N in the fan BLACK lead as a fault-only supply cut. Never chop a brushless fan's supply for speed |
 | Over-temp backstop | existing Gumsung capillary thermostat (label 03-3203 5, catalog GS-320S) stays in series with the fan supply, dial above max cook target |
-| Pit sensor | K-type ungrounded, MAX31856 (default) or MAX31855 (in hand, current bench default) |
+| Pit sensor | K-type ungrounded, MAX31856 (default, due 2026-09-29 to 10-02) or MAX31855 (two in hand, bench default). ONE MAX31855 IS DEFECTIVE: shorted T+/T- read over 21 C off the cold junction (doc 03, doc 09 M8). Test the second board the same way before trusting it |
 | Duct | 23.81 mm OD, 0.85 mm wall, 22.1 mm bore, about 20 in run, two 90 degree bends; couples with a 1 in ID sleeve, about 1 in engagement |
 | Backdraft flap | required, and must crack at 1 to 2 gram-force (20 to 50 Pa). Spring and swing check valves cannot be used |
 | Meat probes (Phase 2) | ThermoWorks Pro-Series thermistors + ADS1115, not K-type |
@@ -129,3 +129,26 @@ Purchasing status 2026-09-25 (doc 07, confirmed by Jason): everything for the fi
 - Do not run git commands through the Claude device bridge. The bridge cannot delete files, so a stale .git\index.lock has to be cleared by hand. Run git in PowerShell or Claude Code CLI on the machine. The repo root is the project directory, not firmware\.
 - Native unit tests and the simulation need a host g++ (doc 05). None is installed on JASON-PC.
 - No invented commands, pins, part numbers, settings or UI labels. If something is unverified, say so and name where it would be verified.
+
+## 11. Where the record lives (added 2026-09-26)
+Remote: https://github.com/jhk1m/charcoal-smoker (branch main). The repo was re-rooted from firmware/ to the
+project directory on 2026-09-25, so firmware, the docs in output/ and this file are all one repo.
+
+Two Claude sessions work on this project: Claude Code CLI on JASON-PC, which runs the builds, flashes and bench
+tests, and a Cowork session, which does research, part selection and doc maintenance. They do not share memory.
+The repo is the only thing both can see, so anything learned in either session is worthless until it lands here.
+
+Where each kind of finding goes:
+- bench and hardware results, including parts that test bad: doc 05 (bring-up section) and doc 09.
+- anything that changes what to buy or what a part is: doc 07, and doc 03 if it is a first-buy item.
+- wiring and pin changes: doc 04.
+- decisions: doc 02, and the one-line summary here.
+
+Git is run by Jason or by the CLI session in PowerShell, never through the Cowork device bridge: that bridge
+cannot delete files, so a stale .git\index.lock has to be cleared by hand. The Cowork session edits files in the
+working tree and leaves committing alone.
+
+CLOSED 2026-09-26: the bad MAX31855 is now recorded. Symptom, from Jason: with T+ shorted to T- the thermocouple
+reading sat more than 21 C away from the cold-junction reading (a good board agrees within about 2 C). Doc 03
+corrected, doc 09 M8 added (test the second board the same way). Which board, which MCU and whether the second
+board passed were never written down and are still unknown.
