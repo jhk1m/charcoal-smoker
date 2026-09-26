@@ -33,6 +33,18 @@ Evening 2026-09-25 additions: blower adapter designed, verified and submitted fo
 | M7 | Basket weight before and after two cooks | Burn rate, which calibrates the fuel gauge in P9 |
 | M8 | CLOSED 2026-09-26: BOTH HUABAN MAX31855 boards failed the shorted-input test on the Freenove WROVER (T+ shorted to T-: pit_raw_c steady 2.0 to 2.5 C against cj_c 25.1 C, about 23 C low; expected within about 2 C; open-circuit fault correct when the short was removed; VCC 3.2 V). Numbers in doc 05. Both returned. No MAX31855 on hand | Bench step 3 (ice and boiling, probe offset) now waits for the MAX31856, due 2026-09-29 to 10-02. Bench console env for it: s3-n8r8-uart (added 2026-09-26, MAX31856 on the CH343 UART console). The MAX31855 backend and the *-max31855 envs stay as untested fallbacks. Doc 03 corrected |
 
+## 2a. MAX31856 incoming inspection (written in the Cowork session 2026-09-25, landed on disk 2026-09-26)
+The generic MAX31856 2-pack (Amazon, due 2026-09-29 to 10-02) is now CRITICAL PATH: both MAX31855 boards were defective and returned (M8), so there is no interim pit sensor. Test each board in this order before wiring it to the bench:
+1. Chip laser-marked MAX31856 with the Maxim or ADI logo; board layout matching the Adafruit 3263.
+2. 3.3 V on 3Vo with 5 V in (the board regulator), before the S3 sees it.
+3. Register readback, the decisive test: setThermocoupleType(J), getThermocoupleType() returns J, then set K. A MAX31855 has no writable registers, so a relabeled part cannot pass. Library calls VERIFIED in Adafruit_MAX31856.h lines 121 and 122 (v1.2.8, installed in .pio\libdeps).
+4. Cold junction reads room temperature with nothing attached.
+5. readFault() raises the open-circuit bit with the thermocouple disconnected; clears with T+ shorted to T-.
+6. Shorted-input check: thermocouple reading equals the cold junction within about 2 C (the test that failed the MAX31855s).
+7. Ice and boiling water, then console `o <C>` for the offset.
+If a board fails: buy the Adafruit 3263, not another unbranded board. There is no MAX31855 fallback any more.
+Offered, not built: a one-key identity check in the bench console that runs steps 3 to 6.
+
 ## 3. Parts still to buy (doc 07)
 
 Superseded 2026-09-25 by doc 07 "Order of purchase": one Mouser cart is the rule. Ordered: BB830 breadboards x2, 2N7000 x20 (Mouser order 1); blower per doc 07 STATUS, but see B5. Local trip: 1 in ID heater hose, four worm clamps, 0.4 to 0.5 mm silicone sheet, gasket tape. ThermoWorks: probes x2 once the plug is measured (B3). Closed without purchase: A8 diode (1N5819 on hand is adequate), B4 resistors (10 k 1 percent on hand). Still blocked on measurements: A10 exhaust damper (M2), B3 jacks, C1 to C4 enclosure.
