@@ -71,6 +71,33 @@ Build results (2026-09-21, clean container, pio run -t clean then pio run):
 
 Container note: PlatformIO's downloader ignored REQUESTS_CA_BUNDLE behind the session proxy; fixed by appending the proxy CA to certifi's bundle in PlatformIO's penv. Not relevant on JASON-PC.
 
+## WROVER bench session (before 2026-09-25; date not in the record, reconstructed 2026-09-26 from the Cowork transcript)
+
+Board: Freenove ESP32-WROVER on the short breadboard, env freenove-wrover-max31855. Both HUABAN MAX31855 boards
+tested. Supply: LM2596 B set to 5 V feeding the board; 3.2 V measured at the 3.3 V pin and 3.2 V VCC to GND at the
+MAX31855 pins (in the 3.0 to 3.6 V range). LM2596 A set to 6.0 V for the legacy blower stage. K-type probe lead
+polarity found by the magnet test (alumel, the negative lead, is magnetic); which colour was magnetic is not recorded.
+
+MAX31855 shorted-input test, T+ shorted to T- with a wire (expected: pit_raw_c equals cj_c within about 2 C):
+
+| Column | Board 1 | Board 2 |
+|---|---|---|
+| pit_raw_c, shorted, settled | steady 2.25 to 2.50 C | steady 2.00 to 2.25 C |
+| cj_c at the same time | 25.06 to 25.12 C | 25.06 to 25.12 C |
+| Error | about 22.7 C low | about 23 C low |
+| Short removed | pit_raw_c 2047.75, tc_fault_bits 0x01 (open circuit) | same |
+| Short restored | fault clears, reading returns | same |
+| cj_c with a finger on the chip | rises 25 to 27 C and falls back | same |
+
+What that proves: SPI wiring and frame decode are right (cold junction decodes and tracks hand heat), the
+thermocouple input path is connected (open-circuit detection works), supply is in range, and the error is a fixed
+offset on two units. That is the chip, not the wiring. Both boards returned 2026-09-26 as defective, reason "reads
+about 23 C low with input shorted, both units".
+
+Blower stage (LM2596 A at 6 V, IRLZ44N, 1N5819, 200 ohm and 10 k, legacy blower on pin 2) was the next step in that
+session; whether it was wired and what it measured is not recorded. It is moot for the Delta (12 V rail, 2N7000 on
+the PWM lead) except for proving the IRLZ44N stage.
+
 ## First hardware bring-up (2026-09-25, ESP32-S3 DevKitC-1 N8R8, no external circuit)
 
 Board flashed and run with nothing wired: no blower, no MAX31855, no breadboard. Console driven over serial with the
