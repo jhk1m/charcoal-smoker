@@ -1,4 +1,4 @@
-# Open Items and Gap Register (audit 2026-09-22, updated 2026-09-25)
+# Open Items and Gap Register (audit 2026-09-22, updated 2026-09-26)
 
 Purpose: one place that answers "are we done". Honest status, not a summary of what exists. Every line is either DONE, OPEN (with what unblocks it), or NOT BUILT (with the decision needed).
 Audit method: read the firmware on JASON-PC, grepped for the features docs 06 and 07 claim, checked purchase status in doc 03 and 07, checked what the simulation exercised (doc 08).
@@ -9,6 +9,8 @@ Updated 2026-09-25. The control LOGIC is implemented, unit-tested, simulated, an
 Docs currency as of 2026-09-25: 00 handoff created; 01 (air path, duct), 02 (rewritten for the Delta and the hardware bring-up), 03 (arrivals, breadboard correction, superseded items), 04 (4-wire wiring), 05 (bring-up record), 06, 07, 08, 09 all current.
 
 Evening 2026-09-25 additions: blower adapter designed, verified and submitted for print (doc 07 A3, output\3d-print\); parts ordering consolidated at Mouser, breadboards and 2N7000s ordered; local firmware build confirmed (doc 05); native tests found NOT runnable on JASON-PC (new gap B4); doc 07 order status contradictory (new gap B5); git repo re-rooted from firmware\ to the project directory so the docs are versioned too.
+
+2026-09-26: B5 closed (all ordered), breadboards on hand. Repo pushed to github.com/jhk1m/charcoal-smoker. The WROVER bench session was reconstructed from the Cowork transcript into doc 05: both MAX31855 boards read about 23 C low with the input shorted, wiring and supply verified, both returned (M8). No pit sensor on hand until the MAX31856 lands; section 2a is its incoming inspection, now console command `i`. New env s3-n8r8-uart (MAX31856 on the CH343 console) is the bench default. Bench probe polarity: crimped bare lead is T- (doc 04). OSOYOO S3 IO breakout proposed by Cowork, order status unrecorded (doc 07 A14).
 
 ## 1. Blocking the bench bring-up (fix first)
 

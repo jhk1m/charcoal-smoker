@@ -152,8 +152,9 @@ Full state-machine run on hardware (simulated probe, 2026-09-25), all as designe
 Not yet observed on hardware: LID_OPEN -> RECOVERY -> HOLD (the run was stopped one second before the 30 s minimum
 elapsed), FUEL_LOW, CREEP, FIRE_OUT, power-loss resume, BLE writes from a phone.
 
-## Results on JASON-PC (2026-09-25 evening)
-- pio run -e s3-n8r8-uart-max31855: SUCCESS. RAM 11.7 percent (38360 B of 327680), Flash 19.4 percent (647610 B of 3342336). Up from 630058 B on 2026-09-21: the console, the MAX31855 backend and the probe offset.
+## Results on JASON-PC (2026-09-25 evening, refreshed 2026-09-26)
+- 2026-09-26, after adding env s3-n8r8-uart and the console `i` identity check: s3-n8r8-uart SUCCESS, RAM 11.7 percent (38408 B), Flash 19.5 percent (650662 B); s3-n8r8-uart-max31855 SUCCESS, RAM 11.7 percent (38360 B), Flash 19.4 percent (648630 B). Neither change has run on hardware: `i` needs a sensor chip, none in hand.
+- 2026-09-25: pio run -e s3-n8r8-uart-max31855: SUCCESS. RAM 11.7 percent (38360 B of 327680), Flash 19.4 percent (647610 B of 3342336). Up from 630058 B on 2026-09-21: the console, the MAX31855 backend and the probe offset.
 - pio test -e native: ERRORED, "'gcc' is not recognized as an internal or external command". PlatformIO's native platform needs a host gcc/g++ on PATH and JASON-PC has none (C:\msys64 exists but no mingw64, ucrt64 or usr gcc is installed). The 29/29 result stands from the container. Unblock: install a MinGW-w64 toolchain (for example via msys64 pacman, mingw-w64-ucrt-x86_64-gcc) and put its bin on PATH, or run the tests under WSL2. Same blocker applies to the simulation (sim/README.md).
 - Test count in test/test_control/test_control.cpp: 29 RUN_TEST calls (27 on 2026-09-21, 29 at the 2026-09-25 commit).
 

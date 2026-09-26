@@ -5,15 +5,18 @@ Owner: Jason. Machine: JASON-PC (Windows 11 Pro).
 Repo: C:\Users\wl_de\projects\charcoal-smoker (git; initialised in firmware\ 2026-09-25 00:32, re-rooted to the project directory the same evening so docs, 3D-print files and firmware share one history)
 Docs on disk: C:\Users\wl_de\projects\charcoal-smoker\output\
 Docs in the Claude project "charcoal-smoker": claude/00-handoff.md through claude/09-open-items-and-gaps.md
-Last updated: 2026-09-25 (evening)
+Last updated: 2026-09-26
 
 ## 1. State in one paragraph
-Firmware is written, unit-tested (29/29 native, container run), simulated closed-loop, and validated on the real ESP32-S3 board with no external circuit using a simulated probe. The control core (PID in HeaterMeter form, 8-state machine, lid detection, long-PWM, fault latching, 200 C software over-temp, NVS settings, BLE GATT server, bench serial console) all ran correctly on hardware. Nothing is wired yet. Breadboards are on hand; the Delta blower, fan drive parts and every other doc 07 line are ordered and not yet received; the thermostat has not been continuity-checked. The blower-to-duct adapter print is in progress (doc 07 A3, STL in output\3d-print\). The blower decision is final (Delta BFB0712HH-AWPH, 4-wire PWM) but the firmware still drives the old 2-wire model: inverted PWM duty, the tach counter, and the BLOWER_STALL / BLOWER_RUNAWAY faults are specified and not built.
+Firmware is written, unit-tested (29/29 native, container run), simulated closed-loop, and validated on the real ESP32-S3 board with no external circuit using a simulated probe. The control core (PID in HeaterMeter form, 8-state machine, lid detection, long-PWM, fault latching, 200 C software over-temp, NVS settings, BLE GATT server, bench serial console) all ran correctly on hardware. Nothing is wired to the S3 yet. Breadboards are on hand; the Delta blower, fan drive parts and every other doc 07 line are ordered and not yet received; the thermostat has not been continuity-checked. The blower-to-duct adapter print is in progress (doc 07 A3, STL in output\3d-print\). There is NO pit sensor on hand: both MAX31855 boards failed the shorted-input test on the WROVER bench (about 23 C low, doc 05) and were returned, so the generic MAX31856 due 2026-09-29 to 10-02 is critical path and gets the incoming inspection in doc 09 section 2a, now a single console key (`i`). The blower decision is final (Delta BFB0712HH-AWPH, 4-wire PWM) but the firmware still drives the old 2-wire model: inverted PWM duty, the tach counter, and the BLOWER_STALL / BLOWER_RUNAWAY faults are specified and not built.
 
-## 1a. Results as of 2026-09-25 (evening, JASON-PC)
+## 1a. Results as of 2026-09-26 (JASON-PC)
 | Check | Result |
 |---|---|
-| pio run -e s3-n8r8-uart-max31855 | SUCCESS. RAM 11.7 percent (38360 B of 327680), Flash 19.4 percent (647610 B of 3342336) |
+| pio run -e s3-n8r8-uart (bench env, MAX31856) | SUCCESS 2026-09-26. RAM 11.7 percent (38408 B of 327680), Flash 19.5 percent (650662 B of 3342336) |
+| pio run -e s3-n8r8-uart-max31855 (fallback) | SUCCESS 2026-09-26. RAM 11.7 percent (38360 B), Flash 19.4 percent (648630 B) |
+| Console `i` identity check | Built 2026-09-26, both envs. NOT run on hardware, no sensor in hand |
+| WROVER bench, MAX31855 shorted-input test | FAIL on both boards, about 23 C low; boards returned (doc 05) |
 | pio test -e native | CANNOT RUN on JASON-PC: no host gcc/g++ on PATH (msys64 is present but has no compiler installed). Last pass 29/29 was in the clean container (doc 05). Unblock by installing a MinGW-w64 gcc or running the tests in WSL2 |
 | output\3d-print\verify.py | 64000 triangles, 0 non-manifold edges, 0 degenerate triangles, signed volume +9.545 cm3 (outward normals). Cross sections match the KEY table: stub 23.80, bead 25.00, flange 36.00 x 29.00, lip 23.30 x 16.70 |
 | Hardware bring-up (simulated probe) | PASS, see section 7 and doc 05 |
@@ -57,8 +60,8 @@ The board exposes two USB ports. The CH343 UART bridge (VID 1A86) is the console
 
 Build, flash and open the console (substitute the actual COM number, it changes after a manual download):
 
-    pio run -e s3-n8r8-uart-max31855 -t upload --upload-port COM6
-    pio device monitor -e s3-n8r8-uart-max31855 --port COM6
+    pio run -e s3-n8r8-uart -t upload --upload-port COM6
+    pio device monitor -e s3-n8r8-uart --port COM6
 
 If upload fails with "No serial data received": hold BOOT, tap RESET, release BOOT, then re-run pio device list because the port re-enumerates.
 
@@ -111,7 +114,8 @@ Boot, LEDC, NVS load and save, task watchdog, NimBLE start and pairing window, s
 ## 8. Blocked, in the order that unblocks the most
 Purchasing status 2026-09-25 (doc 07, confirmed by Jason): everything for the first cook is ordered, Mouser lines, local hose and clamps, flap sheet, and the adapter print. Nothing left to buy until a measurement forces it (doc 07 "Still blocked").
 1. DONE: breadboards on hand (doc 07 A13). Bench step 2a, rails under load, can start now; the jumper kit is in transit.
-2. Delta blower (doc 07 A1), fan drive 2N7000s (A2), 1 in ID hose and clamps (A3), flap silicone sheet (A4): all ordered, not received. Printed adapter (A3): print in progress, STL in output\3d-print\. Confirm the fan outlet is 24.1 x 17.5 mm with calipers on arrival; if not, rerun gen_adapter.py with the measured numbers.
+2. Pit sensor: MAX31856 2-pack due 2026-09-29 to 10-02, critical path (no MAX31855 left). On arrival run the doc 09 section 2a inspection: flash s3-n8r8-uart, `i` with the probe open, `i` with T+ shorted to T-. Fail = buy the Adafruit 3263. Bench probe polarity: crimped bare lead is T- (doc 04).
+2b. Delta blower (doc 07 A1), fan drive 2N7000s (A2), 1 in ID hose and clamps (A3), flap silicone sheet (A4): all ordered, not received. Printed adapter (A3): print in progress, STL in output\3d-print\. Confirm the fan outlet is 24.1 x 17.5 mm with calipers on arrival; if not, rerun gen_adapter.py with the measured numbers. OSOYOO S3 IO breakout (doc 07 A14): proposed, order status unrecorded.
 3. Thermostat continuity check: which of the three spade tabs is the pair closed at room temperature, and where it actually trips.
 4. Measurements still missing: probe port thread and diameter, insertion depth to reach grate level about 8 cm inboard, tach pulses per revolution, exhaust stack OD and whether it has a damper, fire door seal condition. Delta outlet dimensions are now taken from the spec drawing (doc 07 A1), pending the caliper check.
 5. Fan-off draft test: light the fire, leave the blower unplugged, close the door, and see whether the pit climbs past 120 C on its own. This decides how urgent the flap and the exhaust damper are. The simulation says a missing flap costs all control authority (mean duty under 1 percent).
