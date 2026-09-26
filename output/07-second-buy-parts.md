@@ -109,6 +109,9 @@ B1 probes x2, TX-1001X-OP. No distributor carries them. Place with B3 jacks once
 ### Still blocked
 A10 exhaust damper (needs the stack OD), B3 probe jacks (measure the ThermoWorks plug), C1 to C4 (after the first two cooks).
 
+### Proposed in the Cowork session 2026-09-26, order status NOT recorded
+A14 OSOYOO ESP32-S3 IO breakout board: 2x22 socket for the 44-pin DevKitC-1, on-board 5 V/3 A and 3.3 V/3 A from a 7 to 18 V barrel jack, screw terminal per GPIO, SI2302 reverse-polarity protection, V_Selector jumper (keep on 3.3 V). If bought it replaces the LM2596 5 V rail (doc 03 item 9) and moves pin map C from breadboard rows to S/V/G terminals; the 12 V fan branch taps the input screw terminal (thermostat, 1 A fuse, fan RED) and sits outside the board's protection, which the Delta tolerates (spec section 5-2). The fan drive parts still need a breadboard or perfboard. Confirm whether it was ordered and record it here.
+
 ## Measurements that unblock the WAIT items
 - DONE 2026-09-24: duct 23.81 mm OD, 0.85 mm wall, 22.1 mm bore, 20 in run with two bends; existing blower couples with a 1 in ID sleeve, about 1 in of engagement.
 - DONE 2026-09-25 from the spec drawing: Delta outlet 24.1 x 17.5 mm, two 4.5 mm mounting holes, 300 mm bare leads. Re-check the outlet with calipers on arrival before printing the transition.
