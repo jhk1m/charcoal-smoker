@@ -48,6 +48,19 @@ public:
     bool present() const { return present_; }
     static const char* backendName();
 
+    // Incoming-inspection identity check (doc 09 section 2a). Re-probes the chip, then on the MAX31856 writes
+    // thermocouple type J, reads it back, restores K: a relabeled MAX31855 has no writable registers and fails.
+    // Also returns one raw sample so the caller can judge the shorted-input test (tc vs cold junction).
+    struct SelfTest {
+        bool present;
+        bool has_register_test;  // false on the MAX31855 backend
+        bool register_ok;        // J readback matched, K restored
+        float tc_c;              // uncorrected thermocouple reading
+        float cj_c;
+        uint8_t fault_bits;
+    };
+    SelfTest selfTest();
+
 private:
 #ifdef PIT_SENSOR_MAX31855
     int cs_, mosi_, miso_, sck_;

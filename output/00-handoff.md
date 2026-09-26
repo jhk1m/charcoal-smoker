@@ -86,6 +86,7 @@ Type into the monitor and press Enter. The env enables the send_on_enter filter 
     X <pct>      blower max duty
     o <C>        probe offset (ice and boiling check)
     l <0|1>      lid detection on/off
+    i            sensor identity check (doc 09 section 2a): run with the probe open, then with T+ shorted to T-
     t <C>        simulate the probe, no sensor needed;  t off  returns to the sensor
     t <C> <C/s>  simulate with a ramp, e.g.  t 25 0.5
 

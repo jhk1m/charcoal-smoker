@@ -72,6 +72,23 @@ PitReading PitSensor::read() {
     return r;
 }
 
+PitSensor::SelfTest PitSensor::selfTest() {
+    SelfTest t{};
+    t.has_register_test = false;  // read-only chip, nothing to write
+    if (!present_) begin(min_valid_c_, max_valid_c_);
+    t.present = present_;
+    if (!present_) return t;
+    const uint32_t f = readFrame();
+    t.fault_bits = static_cast<uint8_t>(f & 0x07u);
+    int16_t tc = static_cast<int16_t>((f >> 18) & 0x3FFFu);
+    if (tc & 0x2000) tc |= static_cast<int16_t>(0xC000);
+    int16_t cj = static_cast<int16_t>((f >> 4) & 0x0FFFu);
+    if (cj & 0x0800) cj |= static_cast<int16_t>(0xF000);
+    t.tc_c = tc * 0.25f;
+    t.cj_c = cj * 0.0625f;
+    return t;
+}
+
 #else
 // ------------------------------------------------------------------ MAX31856 backend
 
@@ -122,6 +139,25 @@ PitReading PitSensor::read() {
 
     r.filtered_c = filter_.ready() ? filter_.value() : r.raw_c;
     return r;
+}
+
+PitSensor::SelfTest PitSensor::selfTest() {
+    SelfTest t{};
+    t.has_register_test = true;
+    if (!present_) begin(min_valid_c_, max_valid_c_);
+    t.present = present_;
+    if (!present_) return t;
+    // Register readback: CR1 thermocouple-type field is writable on a real MAX31856 only.
+    dev_.setThermocoupleType(MAX31856_TCTYPE_J);
+    const bool j_ok = dev_.getThermocoupleType() == MAX31856_TCTYPE_J;
+    dev_.setThermocoupleType(MAX31856_TCTYPE_K);
+    const bool k_ok = dev_.getThermocoupleType() == MAX31856_TCTYPE_K;
+    t.register_ok = j_ok && k_ok;
+    delay(200);  // continuous mode: let one conversion complete with type K restored
+    t.fault_bits = dev_.readFault();
+    t.tc_c = dev_.readThermocoupleTemperature();
+    t.cj_c = dev_.readCJTemperature();
+    return t;
 }
 #endif
 

@@ -46,6 +46,7 @@ void Console::help() const {
     Serial.println("#   f <hz>       blower PWM frequency    n <pct>  blower min start duty");
     Serial.println("#   X <pct>      blower max duty         o <C>    probe offset (ice/boiling check)");
     Serial.println("#   l <0|1>      lid detection on/off");
+    Serial.println("#   i            sensor identity check: run once with the probe open, once with T+ shorted to T-");
     Serial.println("#   t <C>        simulate the probe at C (no sensor needed); t off  returns to the sensor");
     Serial.println("#   t <C> <C/s>  simulate with a ramp, e.g.  t 25 0.5");
 }
@@ -187,6 +188,32 @@ void Console::handleLine(char* line) {
             st.lid_detect = en;
             d_.store->save(st);
             Serial.printf("# lid detect %s\n", en ? "on" : "off");
+            return;
+        }
+        case 'i': {
+            // Doc 09 section 2a, steps 3 to 6. Judgement: open input must raise the open-circuit bit; shorted input
+            // must read the cold junction within 2 C (the test both MAX31855s failed at 23 C low).
+            const hal::PitSensor::SelfTest t = d_.pit->selfTest();
+            Serial.printf("# %s on CS GPIO%d: %s\n", hal::PitSensor::backendName(), pins::TC_CS,
+                          t.present ? "present" : "NOT DETECTED (check VCC, CS, CLK, DO/SDO wiring)");
+            if (!t.present) return;
+            if (t.has_register_test)
+                Serial.printf("# register readback (type J then K): %s\n",
+                              t.register_ok ? "PASS, writable CR1, real MAX31856"
+                                            : "FAIL, type did not read back: relabeled or dead chip");
+            const bool open = (t.fault_bits & 0x01u) != 0;  // bit0 is open-circuit on both backends
+            const float delta = t.tc_c - t.cj_c;
+            Serial.printf("# tc=%.2f C cj=%.2f C delta=%.2f C fault_bits=0x%02x%s\n", static_cast<double>(t.tc_c),
+                          static_cast<double>(t.cj_c), static_cast<double>(delta), t.fault_bits,
+                          open ? " OPEN" : "");
+            if (open) {
+                Serial.println("# input open: correct if nothing is on T+/T-. Now short T+ to T- and run i again.");
+            } else if (delta > -2.0f && delta < 2.0f) {
+                Serial.println("# shorted-input PASS: reads the cold junction within 2 C");
+            } else {
+                Serial.printf("# shorted-input FAIL: %.1f C off the cold junction. If T+/T- really are shorted, "
+                              "reject the board\n", static_cast<double>(delta));
+            }
             return;
         }
         case 't': {

@@ -111,6 +111,7 @@ without a reflash, and so the state machine can be exercised with nothing wired 
 | `X <pct>` | blower maximum duty, rebuilds the state machine thresholds, saved to NVS |
 | `o <C>` | pit probe offset from the ice / boiling check, saved to NVS |
 | `l <0/1>` | lid detection on or off |
+| `i` | sensor identity check (doc 09 section 2a): re-probes the chip, on the MAX31856 writes type J, reads it back, restores K; prints tc, cold junction, delta and fault bits. Run once with the probe open (expect OPEN), once with T+ shorted to T- (expect delta within 2 C) |
 | `t <C> [C/s]` | simulate the probe at C, optionally ramping; `t off` returns to the real sensor |
 
 `t` is the no-hardware path: flash the board, type `t 25 0.5`, then `c`, and watch IGNITE, RAMP, HOLD,

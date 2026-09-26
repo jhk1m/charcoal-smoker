@@ -43,7 +43,7 @@ The generic MAX31856 2-pack (Amazon, due 2026-09-29 to 10-02) is now CRITICAL PA
 6. Shorted-input check: thermocouple reading equals the cold junction within about 2 C (the test that failed the MAX31855s).
 7. Ice and boiling water, then console `o <C>` for the offset.
 If a board fails: buy the Adafruit 3263, not another unbranded board. There is no MAX31855 fallback any more.
-Offered, not built: a one-key identity check in the bench console that runs steps 3 to 6.
+BUILT 2026-09-26: console command `i` runs steps 3 to 6 (PitSensor::selfTest, src/hal/pit_sensor.cpp; judgement in src/ui/console.cpp). Re-probes the chip so a board plugged in after boot is found. Both UART envs build; not yet run on hardware, no MAX31856 in hand.
 
 ## 3. Parts still to buy (doc 07)
 
