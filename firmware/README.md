@@ -43,11 +43,12 @@ pio test -e native            # needs a host gcc/g++ on PATH; not installed on J
 
 Local build result 2026-09-25 (JASON-PC): `s3-n8r8-uart-max31855` SUCCESS, RAM 11.7 percent (38360 B), Flash 19.4 percent (647610 B). Native tests: 29/29 in the clean container; blocked locally by the missing host compiler (doc 09 B4).
 
-Build environments (`platformio.ini`), all VERIFIED to compile 2026-09-24 in a clean container. `default_envs = s3-n8r8-max31855`.
+Build environments (`platformio.ini`), all VERIFIED to compile 2026-09-24 in a clean container; `s3-n8r8-uart` added and built on JASON-PC 2026-09-26. `default_envs = s3-n8r8-uart`.
 
 | env | board | pit sensor | when |
 |---|---|---|---|
-| `s3-n8r8-uart-max31855` | ESP32-S3-DevKitC-1 N8R8, Serial on the CH343 UART bridge | MAX31855 | BENCH ENV, validated on hardware 2026-09-25 |
+| `s3-n8r8-uart` (default) | ESP32-S3-DevKitC-1 N8R8, Serial on the CH343 UART bridge | MAX31856 | BENCH ENV from 2026-09-26; MAX31856 due 2026-09-29 to 10-02 |
+| `s3-n8r8-uart-max31855` | same | MAX31855 | validated 2026-09-25 with the simulated probe; both MAX31855 boards later failed the shorted-input test and were returned (doc 03), so this is a fallback |
 | `freenove-wrover-max31855` | Freenove ESP32-WROVER camera board | MAX31855, hardware SPI read-only | fallback (pins 14/33/13/32, PWM 2) |
 | `freenove-wrover` | Freenove ESP32-WROVER | MAX31856 | same board, MAX31856 |
 | `wroom32-max31855` | ESP32-WROOM-32 (no camera) | MAX31855 | plain WROOM boards |

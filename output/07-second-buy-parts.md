@@ -28,7 +28,7 @@ Blocked items: marked WAIT, they depend on measurements not yet taken (duct inle
 
 ## B. Cook Manager (Phase 2, meat probes)
 
-Decision: thermistor probes plus an external ADC, not K-type. Food-rated K-type probes cost $69 to $151 each (ThermoWorks smokehouse $69 to $79, Cooper-Atkins 50361-K $151.47, VERIFIED). ThermoWorks Pro-Series thermistor probes are $21 each with the same HeaterMeter-proven Steinhart-Hart coefficients (7.3431401e-4, 2.1574370e-4, 9.5156860e-8, 10 k pull-up; hmcore.cpp VERIFIED). The two MAX31855 boards on hand become spares.
+Decision: thermistor probes plus an external ADC, not K-type. Food-rated K-type probes cost $69 to $151 each (ThermoWorks smokehouse $69 to $79, Cooper-Atkins 50361-K $151.47, VERIFIED). ThermoWorks Pro-Series thermistor probes are $21 each with the same HeaterMeter-proven Steinhart-Hart coefficients (7.3431401e-4, 2.1574370e-4, 9.5156860e-8, 10 k pull-up; hmcore.cpp VERIFIED). (The two MAX31855 boards both failed the shorted-input test and were returned, 2026-09-26; there are no spares.)
 
 | # | Item | Spec | Qty | Price | Status |
 |---|---|---|---|---|---|

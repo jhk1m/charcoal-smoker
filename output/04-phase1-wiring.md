@@ -4,7 +4,7 @@ Created: 2026-09-20. Updated 2026-09-24: pin maps for the Freenove ESP32-WROVER 
 Updated 2026-09-24 (later): blower DECIDED as the Delta BFB0712HH-AWPH, 12 V 4-wire PWM + tach. The power and blower sections are rewritten for it; the 6 V brushed wiring is kept as [LEGACY] for the first bench session.
 Diagram (artifact, S3 pin labels, still shows the legacy brushed blower): https://claude.ai/artifact/Ru4Xnd4WuaMavozzZwdGZH
 Source file kept in session: smoker-wiring.html (republish to same URL to update).
-Updated 2026-09-25: the bench board is now the ESP32-S3-DevKitC-1 clone (map C), flashed and validated (doc 05). The WROVER and WROOM maps are fallbacks. Bench env is s3-n8r8-uart-max31855. Nothing in this document is wired yet: no breadboard on hand (doc 07 A13).
+Updated 2026-09-25: the bench board is now the ESP32-S3-DevKitC-1 clone (map C), flashed and validated (doc 05). The WROVER and WROOM maps are fallbacks. Bench env was s3-n8r8-uart-max31855; both MAX31855 boards failed the shorted-input test and were returned 2026-09-26 (doc 03), so the bench env becomes s3-n8r8-uart (MAX31856 on the CH343 console) when the MAX31856 arrives. Breadboards are on hand (2026-09-25); nothing in this document is wired yet.
 
 ## Power
 12 V 2 A adapter -> 5.5x2.1 panel jack -> 2 A fuse -> reverse-polarity Schottky (SS34; 2x 1N5819 in parallel on the bench) -> +12 V node

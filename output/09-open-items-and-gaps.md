@@ -31,7 +31,7 @@ Evening 2026-09-25 additions: blower adapter designed, verified and submitted fo
 | M5 | Delta running current at 12 V and its real min-start and min-run duties (datasheet: 0.34 A rated, 0.42 A max, start at or below 30 percent) | Power budget, the fuse value, BLOWER_MIN_START_DUTY_PCT and the future BLOWER_MIN_RUN_DUTY_PCT |
 | M6 | Probe port thread; probe length needed to sit at grate level about 8 cm inboard | Probe placement error is the top cause of bad control (doc 06 E12) |
 | M7 | Basket weight before and after two cooks | Burn rate, which calibrates the fuel gauge in P9 |
-| M8 | MAX31855 shorted-input test on the SECOND board. FINDING 2026-09-26 (test done earlier, undocumented until now): one HUABAN MAX31855 with T+ shorted to T- read the thermocouple more than 21 C away from its own cold-junction temperature. Expected within about 2 C. Board is defective. Not recorded: which of the two, which MCU, whether the other passed | Whether a usable MAX31855 exists at all. If the second board fails too, the bench waits for the MAX31856 (due 2026-09-29 to 10-02) and the MAX31855 backend stays untested on hardware. Doc 03 corrected |
+| M8 | CLOSED 2026-09-26: BOTH HUABAN MAX31855 boards failed the shorted-input test on the Freenove WROVER (T+ shorted to T-, thermocouple reading more than 21 C off the cold junction; expected within about 2 C). Both returned. No MAX31855 on hand | Bench step 3 (ice and boiling, probe offset) now waits for the MAX31856, due 2026-09-29 to 10-02. Bench console env for it: s3-n8r8-uart (added 2026-09-26, MAX31856 on the CH343 UART console). The MAX31855 backend and the *-max31855 envs stay as untested fallbacks. Doc 03 corrected |
 
 ## 3. Parts still to buy (doc 07)
 

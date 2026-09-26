@@ -28,7 +28,7 @@ Firmware is written, unit-tested (29/29 native, container run), simulated closed
 | Blower adapter | Printed transition, fan outlet to a 23.8 mm OD stub so the same 1 in ID hose and worm clamps fit both ends. output\3d-print\blower-adapter-delta-BFB0712HH-to-1in-duct-v1.stl, submitted 2026-09-25 to Arlington Public Library The Shop in PLA, print in progress. PLA is fit-check and first-cook only; reprint PETG or ABS if the duct inlet runs warm |
 | Fan drive | 2N7000 open-drain on the PWM lead at 25 kHz, duty inverted. IRLZ44N in the fan BLACK lead as a fault-only supply cut. Never chop a brushless fan's supply for speed |
 | Over-temp backstop | existing Gumsung capillary thermostat (label 03-3203 5, catalog GS-320S) stays in series with the fan supply, dial above max cook target |
-| Pit sensor | K-type ungrounded, MAX31856 (default, due 2026-09-29 to 10-02) or MAX31855 (two in hand, bench default). ONE MAX31855 IS DEFECTIVE: shorted T+/T- read over 21 C off the cold junction (doc 03, doc 09 M8). Test the second board the same way before trusting it |
+| Pit sensor | K-type ungrounded on a MAX31856 (due 2026-09-29 to 10-02). NO MAX31855 ON HAND: both HUABAN boards failed the shorted-input test on the WROVER (over 21 C off the cold junction, expected within about 2 C) and were returned 2026-09-26 (doc 03, doc 09 M8). The MAX31855 backend stays as an untested fallback |
 | Duct | 23.81 mm OD, 0.85 mm wall, 22.1 mm bore, about 20 in run, two 90 degree bends; couples with a 1 in ID sleeve, about 1 in engagement |
 | Backdraft flap | required, and must crack at 1 to 2 gram-force (20 to 50 Pa). Spring and swing check valves cannot be used |
 | Meat probes (Phase 2) | ThermoWorks Pro-Series thermistors + ADS1115, not K-type |
@@ -68,7 +68,7 @@ Unit tests (host, no board). Needs a host gcc/g++ on PATH; JASON-PC has none as 
 
 Simulation: see firmware\sim\README.md (same host-compiler requirement).
 
-Envs: s3-n8r8-uart-max31855 is the one to use on the bench. s3-n8r8 and s3-n8r8-max31855 route Serial to the native USB port. wroom32*, freenove-wrover* are fallback boards. native is the test env. default_envs = s3-n8r8-max31855.
+Envs: s3-n8r8-uart (MAX31856, added 2026-09-26) is the bench env once the MAX31856 arrives; s3-n8r8-uart-max31855 was the bench env while MAX31855 boards existed and still works with the simulated probe. Both put the console on the CH343. s3-n8r8 and s3-n8r8-max31855 route Serial to the native USB port. wroom32*, freenove-wrover* are fallback boards. native is the test env. default_envs = s3-n8r8-uart.
 
 ## 5. Bench console
 Type into the monitor and press Enter. The env enables the send_on_enter filter and echo. Every accepted line is echoed back as `# > <line>`.
@@ -148,7 +148,7 @@ Git is run by Jason or by the CLI session in PowerShell, never through the Cowor
 cannot delete files, so a stale .git\index.lock has to be cleared by hand. The Cowork session edits files in the
 working tree and leaves committing alone.
 
-CLOSED 2026-09-26: the bad MAX31855 is now recorded. Symptom, from Jason: with T+ shorted to T- the thermocouple
-reading sat more than 21 C away from the cold-junction reading (a good board agrees within about 2 C). Doc 03
-corrected, doc 09 M8 added (test the second board the same way). Which board, which MCU and whether the second
-board passed were never written down and are still unknown.
+CLOSED 2026-09-26: the MAX31855 finding is recorded. From Jason: BOTH HUABAN boards, tested on the Freenove WROVER
+with T+ shorted to T-, read the thermocouple more than 21 C away from the cold-junction reading (a good board agrees
+within about 2 C). Both returned. Doc 03 and doc 07 corrected, doc 09 M8 closed. The bench pit sensor is now the
+MAX31856 when it arrives; env s3-n8r8-uart added for it.
