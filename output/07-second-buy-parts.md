@@ -23,7 +23,7 @@ Blocked items: marked WAIT, they depend on measurements not yet taken (duct inle
 | A9 | Gasket for fire door and lid | High-temp fiberglass or Nomex BBQ gasket tape, self-adhesive, 1/2 to 3/4 in wide, rated 260 C or higher | 1 roll | price NV | Buy; E2 draft control |
 | A10 | Exhaust damper | Stove-pipe style butterfly damper matching the stack OD, or a slide cap | 1 | price NV | WAIT: stack OD and whether one exists |
 | A11 | Pit probe reach | If the 1/8 NPT EGT probe (ordered) is too short to reach 8 cm inboard at grate height, Procon B09HSJ4PBB 5 x 80 mm (doc 03 fallback) | 1 | $19.99 (doc 03) | Decide after the probe port is measured |
-| A13 | Breadboard and jumpers | 830-point solderless breadboard plus male-male and male-female Dupont jumpers. Doc 03 listed one as on hand; the one that exists is too short for the S3 by two pins, see doc 03 item 14. The S3 needs 22 rows of terminal strip and an 830-point board has 63 | 2 | 854-BB830 at $8.95 plus $3.40 tariff each, ORDERED 2026-09-25 | DONE |
+| A13 | Breadboard and jumpers | 830-point solderless breadboard plus male-male and male-female Dupont jumpers. Doc 03 listed one as on hand; the one that exists is too short for the S3 by two pins, see doc 03 item 14. The S3 needs 22 rows of terminal strip and an 830-point board has 63 | 2 | 854-BB830 at $8.95 plus $3.40 tariff each, ORDERED 2026-09-25 | DONE, breadboards ON HAND (Jason, 2026-09-25 evening) |
 | A12 | Kitchen or luggage scale | For weighing the charcoal basket before and after cooks (fuel gauge calibration, doc 06 section 1b) | 1 | on hand? | Confirm |
 
 ## B. Cook Manager (Phase 2, meat probes)
@@ -93,7 +93,7 @@ B4 CLOSED: 10 k 1 percent resistors are on hand. Use them and calibrate in ice a
 method. Do not buy 0.1 percent parts.
 Mouser's US free-shipping threshold is NOT VERIFIED; their shipping help page was unavailable when checked.
 
-ORDER 1 STATUS 2026-09-25: placed with only two lines, 854-BB830 x2 and 512-2N7000 x20. That unblocks the bench but the blower 108-BFB0712HH-AWPH, the 1N5822, the jumper kit and the ADS1115 were NOT on it, so they need a second Mouser order. Add them to the existing order before it ships if Mouser allows it, otherwise batch them with the buzzer and button once those are picked, and do not place that order until they are.
+ORDER 1 STATUS 2026-09-25 (confirmed by Jason, evening, twice): ALL lines placed, including the blower, 1N5822, jumper kit and ADS1115. Breadboards are on hand. The fan adapter print (A3) is in progress; STL in output\3d-print\. An earlier note saying only the breadboards and 2N7000s had gone in was wrong and keeps reappearing from an older mirror of this doc; do not restore it.
 
 ### Order 2, local, one trip, no shipping
 1 in ID heater hose (1 ft) and four worm clamps from an auto parts counter; silicone sheet 0.4 to 0.5 mm for the

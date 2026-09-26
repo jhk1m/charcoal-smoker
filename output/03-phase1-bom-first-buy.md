@@ -27,7 +27,7 @@ ORDERED, Amazon, 2026-09-20:
 
 Fallback pit probe if B00YX8XCZK tests grounded or reads noisy: Procon B09HSJ4PBB, $19.99, stated ungrounded, 5 x 80 mm, 1/8 NPT, 2 m braided lead.
 
-NOT PURCHASED: reverse-polarity Schottky (SS34). The 1N5819 (1 A) is marginal for the 2 A input; use two in parallel on the bench or add an SS34 later (doc 07 item A8).
+SUPERSEDED 2026-09-25 (doc 07 A8 CLOSED): the 1N5819 on hand carries the real worst-case input of about 0.67 A (fan 0.42 A plus about 0.25 A for the 5 V rail) with margin, so no SS34 is required. Do NOT parallel two 1N5819s; paralleled diodes do not share current. The 1N5822 (Mouser 625-1N5822-E3) is ordered as optional insurance.
 
 ## A. Core electronics
 | # | Item | Spec / part | Qty | Notes |
@@ -51,7 +51,7 @@ NOT PURCHASED: reverse-polarity Schottky (SS34). The 1N5819 (1 A) is marginal fo
 ## B. Bench and wiring
 | # | Item | Qty | Notes |
 |---|------|-----|-------|
-| 14 | Breadboard, 830 pt | 2 | REASON CORRECTED 2026-09-25: the existing breadboard, used for the Freenove WROVER, is too SHORT for the S3. The ESP32-S3-DevKitC-1 is 70 x 28 mm with 44 pins, 22 per row, so it needs 22 rows of terminal strip (55.9 mm of pin span); two pins overhung the end of the old board and made no contact. Note this also proves the width is fine: the rest of the pins seated, so the board straddles the centre channel correctly. A full 830-point board has 63 rows (160 mm), so the S3 uses 22 and leaves about 41 free for the MAX31855, the MOSFETs and the fan header. Two BusBoard BB830 ordered 2026-09-25 (doc 07 A13), one for the S3 bench, one spare. The WROVER setup stays as it is. |
+| 14 | Breadboard, 830 pt | 2 | REASON CORRECTED 2026-09-25: the existing breadboard, used for the Freenove WROVER, is too SHORT for the S3. The ESP32-S3-DevKitC-1 is 70 x 28 mm with 44 pins, 22 per row, so it needs 22 rows of terminal strip (55.9 mm of pin span); two pins overhung the end of the old board and made no contact. Note this also proves the width is fine: the rest of the pins seated, so the board straddles the centre channel correctly. A full 830-point board has 63 rows (160 mm), so the S3 uses 22 and leaves about 41 free for the MAX31855, the MOSFETs and the fan header. Two BusBoard BB830 ordered 2026-09-25 (doc 07 A13), one for the S3 bench, one spare. Breadboards ON HAND as of 2026-09-25 evening (Jason). The WROVER setup stays as it is. |
 | 15 | Jumper / hookup wires | 1 set | On hand for hookup wire; male-male and male-female Dupont jumpers are in doc 07 A13. |
 | 17 | 6.3 mm female spade terminals | 6 of 100 | Thermostat's three tabs. |
 | 18 | DC barrel plug to bare wire | 1 | No longer needed for the blower: the Delta terminates in a 4-pin fan connector (doc 07 A2). Keep for bench supplies. |

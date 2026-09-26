@@ -92,7 +92,7 @@ Secondary (Phase 2): two ThermoWorks Pro-Series thermistor probes on an ADS1115.
 
 ## 10. Bring-up order (status 2026-09-25)
 1. DONE: flash and run the firmware with no external circuit, using the console's simulated probe.
-2. BLOCKED, needs a breadboard (ordered 2026-09-25, Mouser BB830 x2, doc 07): rails under load, then the blower on the MOSFET; measure the real min-start duty and running current.
+2. Breadboards on hand (2026-09-25). Rails under load can start now. Blower on the MOSFET, real min-start duty and running current: BLOCKED until the Delta and the 2N7000s arrive (ordered, doc 07).
 3. BLOCKED, needs the MAX31855 wired: sensor in boiling and ice water, set the probe offset.
 4. BLOCKED: thermostat continuity check and trip test.
 5. DONE in console form (MANUAL duty and logging); BLE manual control not yet exercised from a phone.

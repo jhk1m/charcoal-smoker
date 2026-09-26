@@ -76,7 +76,7 @@ The Delta is a 4-wire brushless fan, so the drive model changes. None of this is
 1. DONE 2026-09-24/25: B1 bench console, B2 probe offset, B3 git init. Firmware validated on the S3 with the
    simulated probe: IGNITE, RAMP, HOLD, LID_OPEN, over-temp FAULT and fault latching all behaved as designed
    (doc 05, "First hardware bring-up"). Four console bugs found and fixed in the process.
-1b. BLOCKED on delivery: breadboards and 2N7000s ordered from Mouser 2026-09-25 (doc 07 A13, A2), adapter print submitted the same day. Until they arrive the board can still be flashed and driven with the console's simulated probe. Meanwhile: resolve B5, fix B4 so the native tests run locally, and build the 4-wire fan support in section 6a so it is ready when the Delta lands.
+1b. Breadboards ON HAND (2026-09-25 evening). Rails under load (bench step 2a) can start now. Blower work waits on the Delta and the 2N7000s, all ordered 2026-09-25 (doc 07); adapter print in progress, STL in output\3d-print\. Until they arrive the board can still be flashed and driven with the console's simulated probe. Meanwhile: resolve B5, fix B4 so the native tests run locally, and build the 4-wire fan support in section 6a so it is ready when the Delta lands.
 2. DONE 2026-09-23/25: boards arrived, bench step 1 complete (flash and run, simulated probe). Bench step 2 (rails and blower under load, M5, real min-start duty) is blocked on the breadboard and the Delta. M5 is now the Delta's running current at 12 V, not the old 6 V blower's.
 3. Any time: measure M1, M2, M6; run M3 with the next fire; order the ready-now parts in doc 07 section A/B.
 4. When MAX31856 arrives: ice/boiling calibration into B2, then the step-response cook, then gains.
