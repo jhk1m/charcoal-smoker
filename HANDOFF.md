@@ -8,7 +8,7 @@ Docs in the Claude project "charcoal-smoker": claude/00-handoff.md through claud
 Last updated: 2026-09-26
 
 ## 1. State in one paragraph
-Firmware is written, unit-tested (29/29 native, container run), simulated closed-loop, and validated on the real ESP32-S3 board with no external circuit using a simulated probe. The control core (PID in HeaterMeter form, 8-state machine, lid detection, long-PWM, fault latching, 200 C software over-temp, NVS settings, BLE GATT server, bench serial console) all ran correctly on hardware. Nothing is wired to the S3 yet. Breadboards are on hand; the Delta blower, fan drive parts and every other doc 07 line are ordered and not yet received; the thermostat has not been continuity-checked. The blower-to-duct adapter print is in progress (doc 07 A3, STL in output\3d-print\). There is NO pit sensor on hand: both MAX31855 boards failed the shorted-input test on the WROVER bench (about 23 C low, doc 05) and were returned, so the generic MAX31856 due 2026-09-29 to 10-02 is critical path and gets the incoming inspection in doc 09 section 2a, now a single console key (`i`). The blower decision is final (Delta BFB0712HH-AWPH, 4-wire PWM) but the firmware still drives the old 2-wire model: inverted PWM duty, the tach counter, and the BLOWER_STALL / BLOWER_RUNAWAY faults are specified and not built.
+Firmware is written, unit-tested (29/29 native, container run), simulated closed-loop, and validated on the real ESP32-S3 board with no external circuit using a simulated probe. The control core (PID in HeaterMeter form, 8-state machine, lid detection, long-PWM, fault latching, 200 C software over-temp, NVS settings, BLE GATT server, bench serial console) all ran correctly on hardware. Nothing is wired to the S3 yet; bench work since 2026-09-30 is on the Freenove WROVER (doc 04 pin map A, env freenove-wrover). Breadboards are on hand; the Delta blower, fan drive parts and every other doc 07 line are ordered and not yet received; the thermostat has not been continuity-checked. The blower-to-duct adapter print is in progress (doc 07 A3, STL in output\3d-print\). Both MAX31855 boards failed the shorted-input test on the WROVER bench (about 23 C low, doc 05) and were returned. The generic MAX31856 2-pack has arrived: board 1 (chip marked MAX31856) passed the doc 09 section 2a inspection (console `i`) on the WROVER 2026-10-01 and reads the bench probe correctly. Ice/boil calibration and board 2 are still owed. The blower decision is final (Delta BFB0712HH-AWPH, 4-wire PWM) but the firmware still drives the old 2-wire model: inverted PWM duty, the tach counter, and the BLOWER_STALL / BLOWER_RUNAWAY faults are specified and not built.
 
 ## 1a. Results as of 2026-09-26 (JASON-PC)
 | Check | Result |
@@ -31,7 +31,7 @@ Firmware is written, unit-tested (29/29 native, container run), simulated closed
 | Blower adapter | Printed transition, fan outlet to a 23.8 mm OD stub so the same 1 in ID hose and worm clamps fit both ends. output\3d-print\blower-adapter-delta-BFB0712HH-to-1in-duct-v1.stl, submitted 2026-09-25 to Arlington Public Library The Shop in PLA, print in progress. PLA is fit-check and first-cook only; reprint PETG or ABS if the duct inlet runs warm |
 | Fan drive | 2N7000 open-drain on the PWM lead at 25 kHz, duty inverted. IRLZ44N in the fan BLACK lead as a fault-only supply cut. Never chop a brushless fan's supply for speed |
 | Over-temp backstop | existing Gumsung capillary thermostat (label 03-3203 5, catalog GS-320S) stays in series with the fan supply, dial above max cook target |
-| Pit sensor | K-type ungrounded on a MAX31856 (due 2026-09-29 to 10-02). NO MAX31855 ON HAND: both HUABAN boards failed the shorted-input test on the WROVER (read 2.0 to 2.5 C against a 25.1 C cold junction, about 23 C low, expected within about 2 C; wiring and supply verified) and were returned 2026-09-26 (doc 05 "WROVER bench session", doc 03, doc 09 M8). The MAX31855 backend stays as an untested fallback |
+| Pit sensor | K-type ungrounded on a MAX31856. Board 1 of the 2-pack PASSED the doc 09 section 2a inspection on the WROVER 2026-10-01 (register readback, open bit, shorted input 0.11 C; doc 05); board 2 not yet tested; ice/boil offset not yet set. NO MAX31855 ON HAND: both HUABAN boards failed the shorted-input test on the WROVER (read 2.0 to 2.5 C against a 25.1 C cold junction, about 23 C low, expected within about 2 C; wiring and supply verified) and were returned 2026-09-26 (doc 05 "WROVER bench session", doc 03, doc 09 M8). The MAX31855 backend stays as an untested fallback |
 | Duct | 23.81 mm OD, 0.85 mm wall, 22.1 mm bore, about 20 in run, two 90 degree bends; couples with a 1 in ID sleeve, about 1 in engagement |
 | Backdraft flap | required, and must crack at 1 to 2 gram-force (20 to 50 Pa). Spring and swing check valves cannot be used |
 | Meat probes (Phase 2) | ThermoWorks Pro-Series thermistors + ADS1115, not K-type |
@@ -63,6 +63,11 @@ Build, flash and open the console (substitute the actual COM number, it changes 
     pio run -e s3-n8r8-uart -t upload --upload-port COM6
     pio device monitor -e s3-n8r8-uart --port COM6
 
+On the WROVER (on the bench as of 2026-10-01, COM3 on 2026-09-30 and 10-01). This env has no echo, so the monitor flags below are needed to see typed commands:
+
+    pio run -e freenove-wrover -t upload --upload-port COM3
+    pio device monitor -e freenove-wrover --port COM3 --echo -f time -f send_on_enter
+
 If upload fails with "No serial data received": hold BOOT, tap RESET, release BOOT, then re-run pio device list because the port re-enumerates.
 
 Unit tests (host, no board). Needs a host gcc/g++ on PATH; JASON-PC has none as of 2026-09-25, so this only runs in the container or WSL2:
@@ -71,7 +76,7 @@ Unit tests (host, no board). Needs a host gcc/g++ on PATH; JASON-PC has none as 
 
 Simulation: see firmware\sim\README.md (same host-compiler requirement).
 
-Envs: s3-n8r8-uart (MAX31856, added 2026-09-26) is the bench env once the MAX31856 arrives; s3-n8r8-uart-max31855 was the bench env while MAX31855 boards existed and still works with the simulated probe. Both put the console on the CH343. s3-n8r8 and s3-n8r8-max31855 route Serial to the native USB port. wroom32*, freenove-wrover* are fallback boards. native is the test env. default_envs = s3-n8r8-uart.
+Envs: freenove-wrover (MAX31856) is the env in use on the bench as of 2026-10-01. s3-n8r8-uart (MAX31856, added 2026-09-26) is the S3 bench env; s3-n8r8-uart-max31855 was the bench env while MAX31855 boards existed and still works with the simulated probe. Both put the console on the CH343. s3-n8r8 and s3-n8r8-max31855 route Serial to the native USB port. wroom32* and freenove-wrover-max31855 are fallbacks. native is the test env. default_envs = s3-n8r8-uart.
 
 ## 5. Bench console
 Type into the monitor and press Enter. The env enables the send_on_enter filter and echo. Every accepted line is echoed back as `# > <line>`.
@@ -114,7 +119,7 @@ Boot, LEDC, NVS load and save, task watchdog, NimBLE start and pairing window, s
 ## 8. Blocked, in the order that unblocks the most
 Purchasing status 2026-09-25 (doc 07, confirmed by Jason): everything for the first cook is ordered, Mouser lines, local hose and clamps, flap sheet, and the adapter print. Nothing left to buy until a measurement forces it (doc 07 "Still blocked").
 1. DONE: breadboards on hand (doc 07 A13). Bench step 2a, rails under load, can start now; the jumper kit is in transit.
-2. Pit sensor: MAX31856 2-pack due 2026-09-29 to 10-02, critical path (no MAX31855 left). On arrival run the doc 09 section 2a inspection: flash s3-n8r8-uart, `i` with the probe open, `i` with T+ shorted to T-. Fail = buy the Adafruit 3263. Bench probe polarity: crimped bare lead is T- (doc 04).
+2. Pit sensor: MAX31856 2-pack received. Board 1 PASSED the doc 09 section 2a inspection 2026-10-01 on the WROVER (env freenove-wrover, COM3; doc 05). Still owed: board 2 through the same inspection, then ice and boiling water and `o <C>` for the offset (section 2a step 7). The freenove-wrover env has no echo: open the monitor with `--echo -f time -f send_on_enter` to see typed commands. Fail = buy the Adafruit 3263. Bench probe polarity: crimped bare lead is T- (doc 04).
 2b. Delta blower (doc 07 A1), fan drive 2N7000s (A2), 1 in ID hose and clamps (A3), flap silicone sheet (A4): all ordered, not received. Printed adapter (A3): print in progress, STL in output\3d-print\. Confirm the fan outlet is 24.1 x 17.5 mm with calipers on arrival; if not, rerun gen_adapter.py with the measured numbers. OSOYOO S3 IO breakout (doc 07 A14): proposed, order status unrecorded.
 3. Thermostat continuity check: which of the three spade tabs is the pair closed at room temperature, and where it actually trips.
 4. Measurements still missing: probe port thread and diameter, insertion depth to reach grate level about 8 cm inboard, tach pulses per revolution, exhaust stack OD and whether it has a damper, fire door seal condition. Delta outlet dimensions are now taken from the spec drawing (doc 07 A1), pending the caliper check.

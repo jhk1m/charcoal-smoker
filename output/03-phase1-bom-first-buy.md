@@ -9,8 +9,8 @@ CORRECTION 2026-09-24, corrected again 2026-09-25: this list said a breadboard w
 ## Purchase status
 ORDERED, Amazon, 2026-09-19:
 - YEJMKJ ESP32-S3 N8R8 2-pack (order 111-7872990-3981853). RECEIVED 2026-09-23. 1 in use, 1 spare. Flashed and validated 2026-09-25 (doc 05).
-- Generic MAX31856 breakout 2-pack (arriving 2026-09-29 to 10-02). NOT YET RECEIVED.
-- HUABAN MAX31855 2-pack (order 111-5592486-4043419). RECEIVED 2026-09-23. Default sensor for bench work; the firmware has a MAX31855 backend (build flag -DPIT_SENSOR_MAX31855, default env s3-n8r8-uart-max31855). BOTH BOARDS DEFECTIVE, BOTH RETURNED (recorded 2026-09-26): tested on the Freenove WROVER with T+ (yellow) shorted to T- (red), each board read a steady 2.0 to 2.5 C against a cold junction of 25.1 C, about 23 C low; a good MAX31855 agrees within about 2 C on a shorted input. SPI decode, open-circuit detection and the 3.2 V supply all checked out, so it is the chips (numbers in doc 05, "WROVER bench session"). No MAX31855 is on hand. The pit sensor for the bench is now the MAX31856 (due 2026-09-29 to 10-02); the MAX31855 firmware backend stays untested on hardware.
+- Generic MAX31856 breakout 2-pack. RECEIVED by 2026-10-01 (exact date not recorded). Board 1 chip marked MAX31856, passed the doc 09 section 2a inspection 2026-10-01; board 2 not yet tested.
+- HUABAN MAX31855 2-pack (order 111-5592486-4043419). RECEIVED 2026-09-23. Default sensor for bench work; the firmware has a MAX31855 backend (build flag -DPIT_SENSOR_MAX31855, default env s3-n8r8-uart-max31855). BOTH BOARDS DEFECTIVE, BOTH RETURNED (recorded 2026-09-26): tested on the Freenove WROVER with T+ (yellow) shorted to T- (red), each board read a steady 2.0 to 2.5 C against a cold junction of 25.1 C, about 23 C low; a good MAX31855 agrees within about 2 C on a shorted input. SPI decode, open-circuit detection and the 3.2 V supply all checked out, so it is the chips (numbers in doc 05, "WROVER bench session"). No MAX31855 is on hand. The pit sensor for the bench is now the MAX31856 (received; board 1 inspection PASS 2026-10-01); the MAX31855 firmware backend stays untested on hardware.
 
 ORDERED, Amazon, 2026-09-20:
 | ASIN | Item | Price |
@@ -33,7 +33,7 @@ SUPERSEDED 2026-09-25 (doc 07 A8 CLOSED): the 1N5819 on hand carries the real wo
 | # | Item | Spec / part | Qty | Notes |
 |---|------|-------------|-----|-------|
 | 1 | MCU dev board | YEJMKJ ESP32-S3 N8R8. ESP32-S3-DevKitC-1 clone: WROOM-1-N8R8 module, dual USB-C, RGB LED, headers pre-soldered. | 1 (+1 spare) | RECEIVED. Follows the DevKitC-1 pinout. Two USB ports: the CH343 UART bridge (VID 1A86) is the one the console uses; the native port (VID 303A) is not. Detail in doc 05. |
-| 2 | Thermocouple amplifier | Generic MAX31856 breakout, Adafruit 3263 layout. | 1 (+1 spare) | NOT YET RECEIVED. Confirm chip marking on arrival. Thermocouple must be ungrounded-junction (drum is metal). |
+| 2 | Thermocouple amplifier | Generic MAX31856 breakout, Adafruit 3263 layout. | 1 (+1 spare) | RECEIVED. Board 1 marked MAX31856, inspection PASS 2026-10-01; board 2 untested. Thermocouple must be ungrounded-junction (drum is metal). |
 | 2a | Thermocouple amplifier, interim | HUABAN MAX31855 breakout | 1 (+1 spare) | RECEIVED. Firmware backend exists and detects sensor absence correctly on hardware. |
 | 3 | Pit probe | K-type, stainless sheath, compression fitting | 1 | 1/8 NPT EGT probe ordered. Verify port thread and junction type. |
 | 3a | Bench thermocouples | DROK 3-pack K-type 1 m | 1 | Boiling/ice water sanity checks only. |

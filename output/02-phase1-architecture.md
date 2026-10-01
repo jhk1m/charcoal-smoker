@@ -54,7 +54,7 @@ New with the 4-wire fan, NOT YET BUILT: this fan runs at FULL speed if its PWM l
 
 ## 5. Temperature sensing
 Primary: chamber probe at the side port beside the dial thermometer.
-- Backend selectable at build time: MAX31856 (default) or MAX31855 (-DPIT_SENSOR_MAX31855). No MAX31855 on hand: both boards failed the shorted-input test and were returned 2026-09-26 (doc 05). The MAX31856 is due 2026-09-29 to 10-02 and gets the doc 09 section 2a inspection (console `i`) before it is trusted.
+- Backend selectable at build time: MAX31856 (default) or MAX31855 (-DPIT_SENSOR_MAX31855). No MAX31855 on hand: both boards failed the shorted-input test and were returned 2026-09-26 (doc 05). MAX31856 received; board 1 passed the doc 09 section 2a inspection (console `i`) on the WROVER 2026-10-01 (doc 05). Board 2 not yet inspected.
 - K-type, ungrounded junction required (the drum is metal).
 - Sampling 1 Hz, median-of-5, front-end fault bits mapped to SENSOR_OPEN / SENSOR_SHORT / SENSOR_RANGE.
 - Probe offset in NVS, set from the ice and boiling check with the console `o <C>` command.
@@ -93,7 +93,7 @@ Secondary (Phase 2): two ThermoWorks Pro-Series thermistor probes on an ADS1115.
 ## 10. Bring-up order (status 2026-09-25)
 1. DONE: flash and run the firmware with no external circuit, using the console's simulated probe.
 2. Breadboards on hand (2026-09-25). Rails under load can start now. Blower on the MOSFET, real min-start duty and running current: BLOCKED until the Delta and the 2N7000s arrive (ordered, doc 07).
-3. BLOCKED, needs the MAX31856 (due 2026-09-29 to 10-02; the MAX31855s were defective): identity check with console `i`, then sensor in boiling and ice water, set the probe offset.
+3. Identity check with console `i`: DONE 2026-10-01 on MAX31856 board 1 (WROVER, doc 05). Next: sensor in boiling and ice water, set the probe offset; board 2 through `i`.
 4. BLOCKED: thermostat continuity check and trip test.
 5. DONE in console form (MANUAL duty and logging); BLE manual control not yet exercised from a phone.
 6. TODO: step-response cook, derive PID gains.

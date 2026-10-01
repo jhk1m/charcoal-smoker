@@ -33,10 +33,10 @@ Evening 2026-09-25 additions: blower adapter designed, verified and submitted fo
 | M5 | Delta running current at 12 V and its real min-start and min-run duties (datasheet: 0.34 A rated, 0.42 A max, start at or below 30 percent) | Power budget, the fuse value, BLOWER_MIN_START_DUTY_PCT and the future BLOWER_MIN_RUN_DUTY_PCT |
 | M6 | Probe port thread; probe length needed to sit at grate level about 8 cm inboard | Probe placement error is the top cause of bad control (doc 06 E12) |
 | M7 | Basket weight before and after two cooks | Burn rate, which calibrates the fuel gauge in P9 |
-| M8 | CLOSED 2026-09-26: BOTH HUABAN MAX31855 boards failed the shorted-input test on the Freenove WROVER (T+ shorted to T-: pit_raw_c steady 2.0 to 2.5 C against cj_c 25.1 C, about 23 C low; expected within about 2 C; open-circuit fault correct when the short was removed; VCC 3.2 V). Numbers in doc 05. Both returned. No MAX31855 on hand | Bench step 3 (ice and boiling, probe offset) now waits for the MAX31856, due 2026-09-29 to 10-02. Bench console env for it: s3-n8r8-uart (added 2026-09-26, MAX31856 on the CH343 UART console). The MAX31855 backend and the *-max31855 envs stay as untested fallbacks. Doc 03 corrected |
+| M8 | CLOSED 2026-09-26: BOTH HUABAN MAX31855 boards failed the shorted-input test on the Freenove WROVER (T+ shorted to T-: pit_raw_c steady 2.0 to 2.5 C against cj_c 25.1 C, about 23 C low; expected within about 2 C; open-circuit fault correct when the short was removed; VCC 3.2 V). Numbers in doc 05. Both returned. No MAX31855 on hand | Bench step 3 (ice and boiling, probe offset) now waits only on the ice/boil run: MAX31856 board 1 passed section 2a 2026-10-01 on the WROVER (env freenove-wrover). S3 env for it: s3-n8r8-uart (MAX31856 on the CH343 UART console). The MAX31855 backend and the *-max31855 envs stay as untested fallbacks. Doc 03 corrected |
 
 ## 2a. MAX31856 incoming inspection (written in the Cowork session 2026-09-25, landed on disk 2026-09-26)
-The generic MAX31856 2-pack (Amazon, due 2026-09-29 to 10-02) is now CRITICAL PATH: both MAX31855 boards were defective and returned (M8), so there is no interim pit sensor. Test each board in this order before wiring it to the bench:
+The generic MAX31856 2-pack (Amazon, received by 2026-10-01) is CRITICAL PATH: both MAX31855 boards were defective and returned (M8), so there is no interim pit sensor. Test each board in this order before wiring it to the bench:
 1. Chip laser-marked MAX31856 with the Maxim or ADI logo; board layout matching the Adafruit 3263.
 2. 3.3 V on 3Vo with 5 V in (the board regulator), before the S3 sees it.
 3. Register readback, the decisive test: setThermocoupleType(J), getThermocoupleType() returns J, then set K. A MAX31855 has no writable registers, so a relabeled part cannot pass. Library calls VERIFIED in Adafruit_MAX31856.h lines 121 and 122 (v1.2.8, installed in .pio\libdeps).
@@ -46,11 +46,12 @@ The generic MAX31856 2-pack (Amazon, due 2026-09-29 to 10-02) is now CRITICAL PA
 7. Ice and boiling water, then console `o <C>` for the offset.
 If a board fails: buy the Adafruit 3263, not another unbranded board. There is no MAX31855 fallback any more.
 BUILT 2026-09-26: console command `i` runs steps 3 to 6 (PitSensor::selfTest, src/hal/pit_sensor.cpp; judgement in src/ui/console.cpp). Re-probes the chip so a board plugged in after boot is found. Both UART envs build; not yet run on hardware, no MAX31856 in hand.
+RESULT 2026-10-01, board 1 of 2, WROVER (env freenove-wrover, COM3, wiring per doc 04 pin map A): steps 3 to 6 PASS (doc 05 "WROVER MAX31856 inspection"). Step 1: chip marked MAX31856 (Jason, 2026-10-01; logo not recorded). Step 2 not recorded. Step 7 (ice/boil, offset) and board 2 still owed.
 
 ## 3. Parts still to buy (doc 07)
 
 Superseded 2026-09-25 by doc 07 "Order of purchase": one Mouser cart is the rule. Ordered: BB830 breadboards x2, 2N7000 x20 (Mouser order 1); blower per doc 07 STATUS, but see B5. Local trip: 1 in ID heater hose, four worm clamps, 0.4 to 0.5 mm silicone sheet, gasket tape. ThermoWorks: probes x2 once the plug is measured (B3). Closed without purchase: A8 diode (1N5819 on hand is adequate), B4 resistors (10 k 1 percent on hand). Still blocked on measurements: A10 exhaust damper (M2), B3 jacks, C1 to C4 enclosure.
-Received: ESP32-S3 boards and MAX31855 boards 2026-09-23. In transit: MAX31856 2026-09-29 to 10-02. The MAX31855 already on hand covers bench step 3 once the breadboard lands.
+Received: ESP32-S3 boards and MAX31855 boards 2026-09-23. MAX31856 2-pack received by 2026-10-01; board 1 passed section 2a. The MAX31855s were returned 2026-09-26.
 
 ## 4. Built but not validated on hardware
 - Every threshold in config.h is a design value from doc 06, not a measured one: PID gains, lid rate 0.3 C/s, FUEL_LOW 5 C over 10 min, FIRE_OUT 40 C for 15 min, CREEP 14 C for 15 min, startup cap 50 percent, max duty 60 percent.
@@ -94,6 +95,6 @@ The Delta is a 4-wire brushless fan, so the drive model changes. None of this is
 1b. Breadboards ON HAND (2026-09-25 evening). Rails under load (bench step 2a) can start now. Blower work waits on the Delta and the 2N7000s, all ordered 2026-09-25 (doc 07); adapter print in progress, STL in output\3d-print\. Until they arrive the board can still be flashed and driven with the console's simulated probe. Meanwhile: resolve B5, fix B4 so the native tests run locally, and build the 4-wire fan support in section 6a so it is ready when the Delta lands.
 2. DONE 2026-09-23/25: boards arrived, bench step 1 complete (flash and run, simulated probe). Bench step 2 (rails and blower under load, M5, real min-start duty) is blocked on the breadboard and the Delta. M5 is now the Delta's running current at 12 V, not the old 6 V blower's.
 3. Any time: measure M1, M2, M6; run M3 with the next fire; order the ready-now parts in doc 07 section A/B.
-4. When MAX31856 arrives: ice/boiling calibration into B2, then the step-response cook, then gains.
+4. MAX31856 board 1 inspected 2026-10-01. Next: ice/boiling calibration into B2, then the step-response cook, then gains.
 5. Before the first real cook: flap, gasket, exhaust damper, thermostat verification M4, and N3 buzzer if the cook will be unattended.
 6. Phase 2: N1 and N2 once the probes and ADS1115 are in hand.

@@ -1,10 +1,10 @@
 # charcoal-smoker firmware (Phase 1)
 
-Temperature-controlled charcoal smoker controller. ESP32-S3 DevKitC-1 clone (N8R8) is the bench board as of 2026-09-23; WROOM-32 and Freenove WROVER maps remain as fallbacks. Blower: Delta BFB0712HH-AWPH 12 V 4-wire (decided 2026-09-24, not yet fitted); the code currently still drives the old 2-wire 6 V blower. K-type pit probe on a MAX31855 or MAX31856, BLE GATT server for control and telemetry, serial bench console.
+Temperature-controlled charcoal smoker controller. ESP32-S3 DevKitC-1 clone (N8R8) is the target board; the Freenove WROVER (env freenove-wrover) is on the bench as of 2026-10-01 for sensor work; WROOM-32 remains a fallback. Blower: Delta BFB0712HH-AWPH 12 V 4-wire (decided 2026-09-24, not yet fitted); the code currently still drives the old 2-wire 6 V blower. K-type pit probe on a MAX31855 or MAX31856, BLE GATT server for control and telemetry, serial bench console.
 
 Start at `..\HANDOFF.md` for project state, decided hardware, the build and flash commands, the console command set, and what is blocked. Design docs live in the Claude project (`claude/00-handoff` to `claude/09-open-items-and-gaps`) and are mirrored in `..\output\`. This README covers the code only.
 
-Bench env to use: `s3-n8r8-uart-max31855` (Serial on the CH343 UART bridge, VID 1A86). The `s3-n8r8*` envs route Serial to the native USB port (VID 303A) instead.
+Bench env in use 2026-10-01: `freenove-wrover` (MAX31856; this env has no echo, open the monitor with `--echo -f time -f send_on_enter`). On the S3 use `s3-n8r8-uart` (Serial on the CH343 UART bridge, VID 1A86). The `s3-n8r8*` envs route Serial to the native USB port (VID 303A) instead.
 
 ## Toolchain (VERIFIED 2026-09-20)
 
@@ -36,7 +36,7 @@ python -m pip install --user platformio
 Then from this directory:
 
 ```powershell
-pio run -e s3-n8r8-uart-max31855 -t upload --upload-port COM6   # bench env; COM number from pio device list
+pio run -e s3-n8r8-uart -t upload --upload-port COM6   # S3 bench env; COM number from pio device list
 pio device monitor -e s3-n8r8-uart-max31855 --port COM6
 pio test -e native            # needs a host gcc/g++ on PATH; not installed on JASON-PC as of 2026-09-25
 ```
@@ -47,12 +47,12 @@ Build environments (`platformio.ini`), all VERIFIED to compile 2026-09-24 in a c
 
 | env | board | pit sensor | when |
 |---|---|---|---|
-| `s3-n8r8-uart` (default) | ESP32-S3-DevKitC-1 N8R8, Serial on the CH343 UART bridge | MAX31856 | BENCH ENV from 2026-09-26; MAX31856 due 2026-09-29 to 10-02 |
+| `s3-n8r8-uart` (default) | ESP32-S3-DevKitC-1 N8R8, Serial on the CH343 UART bridge | MAX31856 | S3 bench env; MAX31856 received, not yet run on the S3 |
 | `s3-n8r8-uart-max31855` | same | MAX31855 | validated 2026-09-25 with the simulated probe; both MAX31855 boards later failed the shorted-input test and were returned (doc 03), so this is a fallback |
 | `freenove-wrover-max31855` | Freenove ESP32-WROVER camera board | MAX31855, hardware SPI read-only | fallback (pins 14/33/13/32, PWM 2) |
-| `freenove-wrover` | Freenove ESP32-WROVER | MAX31856 | same board, MAX31856 |
+| `freenove-wrover` | Freenove ESP32-WROVER | MAX31856 | IN USE on the bench 2026-10-01; MAX31856 board 1 inspection PASS (doc 05). No echo: monitor with `--echo -f time -f send_on_enter` |
 | `wroom32-max31855` | ESP32-WROOM-32 (no camera) | MAX31855 | plain WROOM boards |
-| `wroom32` | ESP32-WROOM-32 | MAX31856 (Adafruit lib) | when the MAX31856 boards land |
+| `wroom32` | ESP32-WROOM-32 | MAX31856 (Adafruit lib) | fallback |
 | `s3-n8r8` | ESP32-S3-DevKitC-1 N8R8 | MAX31856 | S3 boards |
 | `s3-n8r8-max31855` | ESP32-S3-DevKitC-1 N8R8 | MAX31855 | S3 boards, MAX31855 |
 

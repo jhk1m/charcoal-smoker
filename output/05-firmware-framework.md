@@ -158,9 +158,59 @@ elapsed), FUEL_LOW, CREEP, FIRE_OUT, power-loss resume, BLE writes from a phone.
 - pio test -e native: ERRORED, "'gcc' is not recognized as an internal or external command". PlatformIO's native platform needs a host gcc/g++ on PATH and JASON-PC has none (C:\msys64 exists but no mingw64, ucrt64 or usr gcc is installed). The 29/29 result stands from the container. Unblock: install a MinGW-w64 toolchain (for example via msys64 pacman, mingw-w64-ucrt-x86_64-gcc) and put its bin on PATH, or run the tests under WSL2. Same blocker applies to the simulation (sim/README.md).
 - Test count in test/test_control/test_control.cpp: 29 RUN_TEST calls (27 on 2026-09-21, 29 at the 2026-09-25 commit).
 
+## WROVER boot log (2026-09-30, COM3, env freenove-wrover, MAX31856 backend, nothing wired)
+
+Raw log kept in the Cowork transcript. Banner: `charcoal-smoker fw 0.1.0 hw=freenove-wrover tc=MAX31856`,
+ESP32 boot ROM `ets Jul 29 2019`, reset reason 1 (POWERON_RESET).
+
+PASS, unchanged from the S3 session:
+- boot, no crash, no watchdog reset over the 45 s captured;
+- LEDC attached to pin 2, channel 0, 10-bit, which is the WROVER PWM pin in doc 04 pin map A;
+- NimBLE started, host synced, pairing window opened;
+- console banner printed and the CSV header emitted twice (boot, then again from the control task);
+- CSV streaming at 1 Hz, state IDLE, fault NONE, duty 0.
+
+SENSOR: not responding. Every sample reads
+`pit_raw_c=-0.01  pit_filt_c=-0.01  cj_c=256.00  tc_fault_bits=0xff`.
+
+Interpretation (inference, not measured): this is the signature of SPI reads returning all ones, i.e. MISO idle
+high with no device driving it.
+- `0xff` is every fault bit set at once, CJRANGE, TCRANGE, CJHIGH, CJLOW, TCHIGH, TCLOW, OVUV and OPEN together.
+  No real fault condition asserts all eight.
+- `-0.01` is one LSB negative on the linearized TC register, which is what 0xFFFFFF decodes to at 2^-7 C.
+- `256.00` is 65535/256, the cold-junction bytes read as 0xFFFF.
+All three are consistent with each other and with nothing being connected.
+
+Consistent with the 2026-09-26 note above: no sensor chip in hand, so there is nothing on the SPI bus. This is
+NOT evidence that any board is bad. When a chip is wired, these three numbers changing away from
+-0.01 / 256.00 / 0xff is the first thing to check, before any calibration.
+
+Benign: `Preferences.cpp begin(): nvs_open failed: NOT_FOUND` on a first boot, before the namespace exists. It
+should not reappear once settings have been saved once.
+
+## WROVER MAX31856 inspection (2026-10-01, COM3, env freenove-wrover, board 1 of the 2-pack)
+
+Wiring per doc 04 pin map A (SCK 14, SDI 13, SDO 33, CS 32, VIN on EXT-3.3V). Doc 09 section 2a steps 3 to 6 all PASS:
+- SPI alive: the 2026-09-30 all-ones signature (-0.01 / 256.00 / 0xff) is gone; cj_c reads 26.6 to 26.8 C at room temperature.
+- Probe on, at ambient: pit_raw_c 25.1 to 25.2 C, noise about 0.1 C, fault 0x00. About 1.5 C under the cold junction,
+  read as the tip sitting in air cooler than the board (inference).
+- Polarity: pinching the tip took pit_raw_c from 25.2 to 35.4 C in 6 s and it fell back on release; cj_c unchanged.
+  Crimped lead on T- confirmed correct.
+- Open input: pit_raw_c 1372.05 C, tc_fault_bits 0x41 (TCRANGE + OPEN); pit_filt_c held its last good value.
+- Shorted input, console `i` run twice: `present`; `register readback (type J then K): PASS, writable CR1, real
+  MAX31856`; tc 26.94 / 26.89 C against cj 26.83 / 26.78 C, delta 0.11 C both runs, fault 0x00, shorted-input PASS.
+  The MAX31855s failed this same test at about 23 C low.
+
+Console note: freenove-wrover has no send_on_enter or echo in platformio.ini, so typed commands are invisible.
+`pio device monitor -e freenove-wrover --port COM3 --echo -f time -f send_on_enter` shows them (`# > i`).
+
+Chip marking: MAX31856 (Jason, 2026-10-01; logo not recorded).
+
+Not done: section 2a step 2 (3Vo with 5 V in) not recorded; step 7 ice/boil and offset; board 2.
+
 ## Next
 1. DONE 2026-09-25: pio run on JASON-PC confirmed (above). pio test -e native is blocked locally, see above.
 2. 2026-09-23 boards arrive: flash, confirm COM port, confirm CSV on Serial, confirm SMOKER-CTRL advertises (nRF Connect or similar), 10 characteristics.
 3. Wire blower per 04-phase1-wiring.md, MANUAL mode over BLE, measure min-start duty and pick PWM frequency, write values into config.h. Watch the long-PWM pulsing at commands below min-start.
-4. MAX31856 arrives 2026-09-29 to 10-02: boiling/ice sanity, then step-response cook with the fan-off draft test first (doc 01 open items).
+4. MAX31856 received; board 1 inspection PASS 2026-10-01 (above). Next: boiling/ice sanity, then step-response cook with the fan-off draft test first (doc 01 open items).
 5. First real cook: log CSV, check that LID_OPEN triggers on a real lid event and not on wind; tune LID_OPEN_DROP_C_PER_S, FUEL_LOW, CREEP from the log.
