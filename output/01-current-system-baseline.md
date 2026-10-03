@@ -16,7 +16,7 @@ Sections 1 and 4 below describe the vendor's cabinet product and are reference o
 
 DECISION 2026-09-20: SINGLE SUPPLY. One external DC adapter feeds the controller board; the board derives the blower rail (6 V) and the logic rail (3.3 V / 5 V) on-board. The existing 6 V / 800 mA adapter is retired from the prototype. Input voltage and adapter rating to be fixed in the Phase 1 power budget.
 
-DECISION 2026-09-20: KEEP THE EXISTING THERMOSTAT as the Phase 1 hardware over-temp cutoff. It meets the role (mechanical, independent of software, contact rating far above the 6 V / 0.8 A blower load, 50 to 320 C range covers a cutoff above any cook target). Replace only if the capillary or bulb is damaged.
+DECISION 2026-09-20: KEEP THE EXISTING THERMOSTAT as the Phase 1 hardware over-temp cutoff. It meets the role (mechanical, independent of software, contact rating far above the 6 V / 0.8 A blower load, 50 to 320 C range covers a cutoff above any cook target). Replace only if the capillary or bulb is damaged. RECONFIRMED 2026-10-03 after a proposal to remove it: the thermostat switch and bulb stay in series with the fan; only the box and dial go. See HANDOFF section 2.
 
 Consequences for Phase 1 design:
 - No 12 V rail exists on the prototype; all rails come from the single adapter via on-board regulators.

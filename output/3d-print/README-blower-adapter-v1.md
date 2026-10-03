@@ -1,5 +1,9 @@
 # Blower adapter v1 - print and fit notes
 
+SUPERSEDED 2026-10-02 by v6 (README-blower-adapter-v6.md). The 24.1 x 17.5 mm outlet below came from the
+spec drawing and does not match the real fan: measured outlet is 39.90 x 25.00 outside, 35.90 x 17.50 bore.
+Do not print this version.
+
 File to submit: blower-adapter-delta-BFB0712HH-to-1in-duct-v1.stl
 Created 2026-09-25. Units mm. Envelope 36.0 x 29.0 x 61.5 mm. Solid volume 9.54 cm3.
 
