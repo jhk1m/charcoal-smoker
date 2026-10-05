@@ -42,7 +42,7 @@ Software on top, all implemented and unit-tested:
 - FIRE_OUT fault; FUEL_LOW, CREEP and pit-deviation warnings;
 - VALIDATED ON HARDWARE 2026-09-25: the over-temp path fired at 200 C and latched, and startCook is refused until the fault is cleared.
 
-New with the 4-wire fan, NOT YET BUILT: this fan runs at FULL speed if its PWM lead is disconnected (datasheet). Detection is the tach; the action is dropping the supply-cut MOSFET, with the thermostat as the backstop. Faults BLOWER_STALL and BLOWER_RUNAWAY are specified in doc 09 section 6a.
+New with the 4-wire fan, BUILT 2026-10-04, not yet run against the fan: this fan runs at FULL speed if its PWM lead is disconnected (datasheet). Detection is the tach; the action is dropping the supply-cut MOSFET, with the thermostat as the backstop. Faults BLOWER_STALL and BLOWER_RUNAWAY are specified in doc 09 section 6a. As built, the supply-cut MOSFET is also off in IDLE, so an idle controller cannot have a running fan whatever the state of the PWM lead. The low-side cut was measured 2026-10-05 (doc 09 M9): with it off, the fan's FG and PWM leads sit at 10.85 V, so the tach lead cannot reach the MCU as drawn in the diagram above. The fix is not yet chosen (blocking diode in the tach lead, a high-side cut, or no cut for the first tests).
 
 ## 4. Blower drive
 - Delta BFB0712HH-AWPH: 12 V, 0.34 A rated / 0.42 A max, 15.3 CFM free air, 0.98 inH2O max static, 4400 RPM, 75.7 x 75.7 x 25 mm, -10 to 70 C.
@@ -92,8 +92,8 @@ Secondary (Phase 2): two ThermoWorks Pro-Series thermistor probes on an ADS1115.
 
 ## 10. Bring-up order (status 2026-09-25)
 1. DONE: flash and run the firmware with no external circuit, using the console's simulated probe.
-2. Breadboards on hand (2026-09-25). Rails under load can start now. Blower on the MOSFET, real min-start duty and running current: BLOCKED until the Delta and the 2N7000s arrive (ordered, doc 07).
-3. Identity check with console `i`: DONE 2026-10-01 on MAX31856 board 1 (WROVER, doc 05). Next: sensor in boiling and ice water, set the probe offset; board 2 through `i`.
+2. Breadboards on hand (2026-09-25). Rails under load can start now. Blower on the MOSFET, real min-start duty and running current: both arrived 2026-10-02. 2026-10-05: the 12 V input chain is on the breadboard, the Delta runs on straight 12 V (current not reported) and the IRLZ44N supply cut is fitted; no fan lead is on the S3 yet (doc 05 "S3 bench session").
+3. Identity check with console `i`: DONE 2026-10-01 on MAX31856 board 1 (WROVER, doc 05). DONE again 2026-10-04 on the S3, which is the bench and first-smoker board from that date (Jason's decision; the WROVER is retired from the bench). Ice and hot-water points taken with the EGT probe: 3.5 C high in ice, 4 to 5 C low at 88.9 C; kept for the first tests with `o 6.5`, replacement to follow (doc 05). Next: board 2 through `i`.
 4. BLOCKED: thermostat continuity check and trip test.
 5. DONE in console form (MANUAL duty and logging); BLE manual control not yet exercised from a phone.
 6. TODO: step-response cook, derive PID gains.

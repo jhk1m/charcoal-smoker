@@ -19,6 +19,7 @@ struct Settings {
     bool cook_active;      // set while a cook is running; on boot, resume the cook (doc 06 P8)
     float probe_offset_c;  // added to every pit reading; set from the ice / boiling check (doc 06 E14)
     bool lid_detect;       // lid detection enabled (turn off in high wind, per CyberQ and FireBoard advice)
+    uint8_t fan_tach_ppr;  // fan tach pulses per revolution (4-wire fan); counted on the bench (doc 09 section 6a)
 };
 
 class SettingsStore {

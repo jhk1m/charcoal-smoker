@@ -29,6 +29,8 @@ const char* toString(Fault f) {
         case Fault::PIT_OVER_LIMIT: return "PIT_OVER_LIMIT";
         case Fault::WATCHDOG_RESET: return "WATCHDOG_RESET";
         case Fault::FIRE_OUT: return "FIRE_OUT";
+        case Fault::BLOWER_STALL: return "BLOWER_STALL";
+        case Fault::BLOWER_RUNAWAY: return "BLOWER_RUNAWAY";
     }
     return "?";
 }
@@ -146,6 +148,14 @@ void StateMachine::clearFault() {
     fault_ = Fault::NONE;
     Sample none{last_pit_c_, true, Fault::NONE, 0.0f};
     transition(State::IDLE, none);
+}
+
+void StateMachine::raiseFault(Fault f) {
+    // Same scope as the checks in tick(): nothing to fault in IDLE, and the first fault stays latched.
+    if (f == Fault::NONE || state_ == State::IDLE || state_ == State::FAULT) return;
+    fault_ = f;
+    Sample none{last_pit_c_, true, Fault::NONE, 0.0f};
+    transition(State::FAULT, none);
 }
 
 // ---------------------------------------------------------------- history and rates

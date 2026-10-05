@@ -8,6 +8,7 @@
 
 #include <cstdint>
 
+#include "control/fan_monitor.h"
 #include "control/state_machine.h"
 #include "hal/blower.h"
 #include "hal/pit_sensor.h"
@@ -17,6 +18,7 @@ namespace ui {
 
 struct ConsoleDeps {
     control::StateMachine* sm;
+    control::FanMonitor* fan;
     hal::Blower* blower;
     hal::PitSensor* pit;
     storage::Settings* settings;

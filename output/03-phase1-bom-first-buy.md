@@ -26,6 +26,7 @@ ORDERED, Amazon, 2026-09-20:
 | B0FW5C1381 | DROK K-type bench probes 3-pack | $6.99 |
 
 Fallback pit probe if B00YX8XCZK tests grounded or reads noisy: Procon B09HSJ4PBB, $19.99, stated ungrounded, 5 x 80 mm, 1/8 NPT, 2 m braided lead.
+2026-10-04: the EGT probe tested ungrounded but inaccurate on the S3 bench (3.5 C high in ice, 4 to 5 C low at 88.9 C, doc 05 "S3 bench session") and is KEPT FOR THE FIRST TESTS with a +6.5 C offset (Jason; rejected, then kept, the same day). Replacement to be bought when convenient, not yet ordered; the Procon's own accuracy is unverified until it gets the same ice and hot-water test.
 
 SUPERSEDED 2026-09-25 (doc 07 A8 CLOSED): the 1N5819 on hand carries the real worst-case input of about 0.67 A (fan 0.42 A plus about 0.25 A for the 5 V rail) with margin, so no SS34 is required. Do NOT parallel two 1N5819s; paralleled diodes do not share current. The 1N5822 (Mouser 625-1N5822-E3) is ordered as optional insurance; 2 received 2026-10-02 (labeled 1N5822-E3/73).
 
@@ -35,7 +36,7 @@ SUPERSEDED 2026-09-25 (doc 07 A8 CLOSED): the 1N5819 on hand carries the real wo
 | 1 | MCU dev board | YEJMKJ ESP32-S3 N8R8. ESP32-S3-DevKitC-1 clone: WROOM-1-N8R8 module, dual USB-C, RGB LED, headers pre-soldered. | 1 (+1 spare) | RECEIVED. Follows the DevKitC-1 pinout. Two USB ports: the CH343 UART bridge (VID 1A86) is the one the console uses; the native port (VID 303A) is not. Detail in doc 05. |
 | 2 | Thermocouple amplifier | Generic MAX31856 breakout, Adafruit 3263 layout. | 1 (+1 spare) | RECEIVED. Board 1 marked MAX31856, inspection PASS 2026-10-01; board 2 untested. Thermocouple must be ungrounded-junction (drum is metal). |
 | 2a | Thermocouple amplifier, interim | HUABAN MAX31855 breakout | 1 (+1 spare) | RECEIVED. Firmware backend exists and detects sensor absence correctly on hardware. |
-| 3 | Pit probe | K-type, stainless sheath, compression fitting | 1 | 1/8 NPT EGT probe RECEIVED 2026-10-02 (3.2 in length per the listing). Junction type NOT yet tested: meter sheath to each lead, continuity = grounded = use the Procon fallback. Entry decided 2026-10-03: second 1/8 NPT hole tapped in the existing port block (doc 09 M6). Jason 2026-10-02: considers this probe questionable; it gets the continuity and ice/boil tests before any decision to replace it with the Procon. |
+| 3 | Pit probe | K-type, stainless sheath, compression fitting | 1 | 1/8 NPT EGT probe RECEIVED 2026-10-02 (3.2 in length per the listing). TESTED 2026-10-04 on the S3: ungrounded, yellow = T+ / red = T-, but 3.5 C high in ice and 4 to 5 C low at 88.9 C (doc 05 "S3 bench session"). Entry decided 2026-10-03: second 1/8 NPT hole tapped in the existing port block (doc 09 M6). Jason 2026-10-04: kept for the first tests with a +6.5 C offset, replacement to be bought. |
 | 3a | Bench thermocouples | DROK 3-pack K-type 1 m | 1 | Boiling/ice water sanity checks only. |
 | 4 | Blower switch | IRLZ44N, TO-220 | 2 of 10 | VERIFIED: Infineon part page. ROLE CHANGED: with the Delta 4-wire fan this is a fault-only supply cut in the fan's BLACK lead, not the PWM element. Doc 04. |
 | 5 | Flyback diode | 1N5819 Schottky 1 A / 40 V | 2 of 100 | SUPERSEDED: not used with the Delta. A brushless fan has its own internal drive; no flyback diode across the fan. Keep for other inductive loads. |
@@ -46,7 +47,7 @@ SUPERSEDED 2026-09-25 (doc 07 A8 CLOSED): the 1N5819 on hand carries the real wo
 | 10 | Adapter | 12 V 2 A, 5.5 x 2.1 mm center positive | 1 | |
 | 11 | Barrel jack | DaierTek panel jack + plug | 1 of 6 | |
 | 12 | Input fuse | 2 A fast-blow 5 x 20 mm in BOJACK inline holder | 1 | Plus a 1 A on the fan branch (doc 07 A7). |
-| 13 | Reverse polarity protection | SS34 3 A Schottky or P-MOSFET | 1 | NOT BOUGHT. Bench: two 1N5819 in parallel or omit with care on polarity. |
+| 13 | Reverse polarity protection | SS34 3 A Schottky or P-MOSFET | 1 | NOT BOUGHT. Bench: a single 1N5819, fitted 2026-10-05; never two in parallel, see the SUPERSEDED note above. |
 
 ## B. Bench and wiring
 | # | Item | Qty | Notes |

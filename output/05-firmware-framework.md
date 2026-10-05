@@ -208,9 +208,58 @@ Chip marking: MAX31856 (Jason, 2026-10-01; logo not recorded).
 
 Not done: section 2a step 2 (3Vo with 5 V in) not recorded; step 7 ice/boil and offset; board 2.
 
+## 4-wire fan support (2026-10-04, built and unit-tested, NOT run on hardware)
+Implements doc 09 section 6a for the Delta BFB0712HH-AWPH. No fan, tach or supply-cut circuit has been connected to this code yet.
+
+What changed:
+- include/config.h: `BLOWER_4WIRE` (true by default; build with `-DBLOWER_LEGACY_2WIRE` for the old 6 V blower), the 21 to 28 kHz limits, `FAN_TACH_PULSES_PER_REV` 2, `FAN_RATED_RPM` 4400, `FAN_STALL_S` 3, `FAN_RUNAWAY_MARGIN_PCT` 25, `FAN_RUNAWAY_S` 5, `FAN_TACH_GLITCH_NS` 10000.
+- src/hal/blower.*: inverted duty for the open-drain 2N7000 (GPIO high = fan sees low). SUPPLY_EN handling: cut in `begin()` and `off()` (so in IDLE and FAULT, not only on a fault), raised by `setDutyPercent()` after the PWM value is written. With the supply cut the PWM GPIO is low, which releases the fan's PWM lead. The supply is never raised if LEDC failed to attach, and it is cut if a later `ledcWrite` fails. VERIFIED in cores/esp32/esp32-hal-ledc.c (3.3.12): `ledcWrite` turns a duty at or above 1023 into 1024, a constant level, so 0 and 100 percent are glitch-free in both polarities.
+- src/hal/fan_tach.*: PCNT unit counting rising edges on FAN_TACH with a 10 us glitch filter, read and cleared every control tick. VERIFIED in framework-arduinoespressif32-libs 3.3.12, esp_driver_pcnt/include/driver/pulse_cnt.h; `pcnt_new_channel` enables the internal pull-up on the edge pin (header comment), the external 10 k in doc 04 is still required (WROOM-32 GPIO34 has no internal pull-up).
+- src/control/fan_monitor.h (pure C++): RPM = 60 x pulses / (pulses per rev x dt). BLOWER_STALL: driven above 0 percent with zero pulses for 3 driven seconds (long-PWM off time does not count, a driven second with pulses clears it). BLOWER_RUNAWAY: RPM above (commanded percent of 4400 + 25 percent of 4400) for 5 s. Not judged while the supply is cut.
+- src/control/state_machine.*: faults BLOWER_STALL = 8 and BLOWER_RUNAWAY = 9, and `raiseFault()` for a fault found outside `tick()`. It latches FAULT from any active state; main.cpp then calls `Blower::off()`, which cuts the supply.
+- src/main.cpp: step 2b reads the tach and feeds the monitor each tick. CSV gains a last column `fan_rpm`.
+- Console: `p <n>` pulses per revolution (NVS key fan_ppr, 1 to 8), `T <0|1>` tach faults off or on (RAM only, on again at every boot), `d` prints a fan line, `f <hz>` is held to 21000 to 28000 on the 4-wire build. A stored PWM frequency outside that range is replaced by 25000 at load.
+
+Consequence for the no-wiring bench loop: with nothing on FAN_TACH a cook stops on BLOWER_STALL 3 s after the fan is first driven. Type `T 0` first when running on a bare board.
+
+Results 2026-10-04 on JASON-PC:
+- pio run: s3-n8r8-uart SUCCESS (RAM 38440 B, Flash 658118 B of 3342336, 19.7 percent), s3-n8r8 SUCCESS, s3-n8r8-uart-max31855 SUCCESS, freenove-wrover SUCCESS, wroom32 SUCCESS. No compiler warnings. s3-n8r8 also compiled once with PLATFORMIO_BUILD_FLAGS=-DBLOWER_LEGACY_2WIRE: SUCCESS.
+- Unit tests: 39 Tests 0 Failures (29 existing, 2 for raiseFault, 8 for the fan monitor). Run under WSL2 Ubuntu, g++ 13.3.0, by compiling test_control.cpp, pid.cpp, state_machine.cpp and Unity's unity.c directly. `pio test -e native` itself still cannot run on Windows (no host gcc on PATH, gap B4).
+- Simulation: sim_main.cpp compiles under the same g++. Not re-run; the plant model has no tach.
+
+Owed on the bench before this is trusted (doc 09 section 6a):
+1. With SUPPLY_EN low, measure the YELLOW (FG) and BLUE (PWM) leads against controller GND before either is connected to a GPIO (doc 09 M9). DONE 2026-10-05: 10.85 V on both, the same into 10 k; the tach lead needs a fix before it meets a GPIO ("S3 bench session" below).
+2. Count tach pulses per revolution and set `p <n>`. At `m 100` (after `X 100`) the CSV fan_rpm should read about 4400.
+3. Start duty and the lower run duty, with `m <pct>` and fan_rpm in the CSV.
+4. RPM against duty at 30, 40, 50, 60 percent: the runaway margin assumes roughly linear.
+5. Pull the tach lead with the fan running: BLOWER_STALL within 3 s. Open the BLUE lead: the fan goes to full speed, BLOWER_RUNAWAY within 5 s, and the fan loses its supply.
+
+Found while reading the driver, NOT changed: `Blower::service()` runs once per 1 Hz control tick, so the start kick lasts until the next tick (about 1 s) instead of BLOWER_KICK_MS (300 ms). In a long-PWM pulse of one second the whole pulse is therefore at the max duty, not at min-start. It needs a timer or a faster service call to fix.
+
+## S3 bench session (2026-10-04 and 10-05, COM6, env s3-n8r8-uart)
+Board decided by Jason: the S3-N8R8 is the breadboard and first-smoker board (doc 04 pin map C).
+
+- Flash: `pio run -e s3-n8r8-uart -t upload --upload-port COM6` SUCCESS, CH343 on COM6 (VID:PID 1A86:55D3). First run of the 4-wire build on hardware, bare board, no fan circuit: boots, `LEDC attached to pin 4`, NimBLE starts, `d` prints `fan=4-wire tach_pin=5 supply_en_pin=6 supply=0 ppr=2 rpm=0`, state IDLE. `T 0` typed, so the tach faults were not exercised.
+- MAX31856 on the S3 pins (VIN 3V3, SCK 12, SDI 11, SDO 13, CS 10). Board 1 of the 2-pack, the one inspected 2026-10-01 (Jason).
+- First three `i` runs read all zeros (tc 0.00, cj 0.00, fault 0x00, readback FAIL). Cause (Jason): power and ground were not properly feeding the MAX31856; GND had been on a breadboard rail not tied to the S3. Fixed by wiring VIN and GND to the S3's own 3V3 and GND pins. All zeros on this backend = sensor unpowered.
+- Open input: cj 24.98 C, readback PASS, tc 1372.05 C, fault 0x41 (TCRANGE + OPEN), as expected.
+- Shorted input, `i` twice: readback PASS, tc 24.84 / 24.79 C against cj 25.03 / 25.02 C, delta -0.20 / -0.23 C, fault 0x00, shorted-input PASS.
+- Found, NOT fixed: on the all-zero readings `i` still printed `present` and `shorted-input PASS` (0.00 against 0.00 is within 2 C; the Adafruit `begin()` does not detect a missing chip). The readback line is the one to trust.
+- EGT probe (received 2026-10-02) on the terminal, yellow on T+, red on T-. At ambient: pit_raw_c 24.0 to 24.1 C against cj 25.6 to 25.7 C, noise about 0.1 C, fault 0x00. Polarity: tip pinched, pit_raw_c rose from 24.24 to about 27.4 C in 30 s and levelled, cj unchanged at 25.7 C, so yellow = T+ is correct. The rise is much slower than the bare bench probe's (25.2 to 35.4 C in 6 s on 2026-10-01); read as the sheath's thermal mass (inference, not measured).
+- EGT sheath-to-lead continuity: tested ungrounded (Jason).
+- Ice point, two baths: run 1 settled 3.1 to 3.5 C and still creeping; run 2 (repacked, stirred) last 30 s avg 3.81, min 3.53, max 3.99 C, cj 25.4 C, fault 0x00. A separate thermometer read 32.5 F (0.3 C) (Jason; taken here as a reading of the same ice bath, its accuracy unverified). So the EGT probe plus board reads about 3.5 C high at the ice point. Offset NOT set: one point cannot tell a fixed offset from stem conduction or a weak signal; the boil point decides.
+- Response: in water the probe covered about two thirds of a 21 C step in roughly 23 s (run 1, read off the 10 s samples).
+- Hot water, NOT a valid boil point: the water was off the boil and cooling. EGT probe rose 27.6 -> 70.25 C in 60 s (peak), then fell to 66.0 to 67.8 C over the last 30 s (avg 66.75), cj 25.7 C, fault 0x00. Reference thermometer: 173.8 F (78.8 C) at its highest (Jason); the two readings were not taken at the same instant, so the gap (up to 8.5 C low) is an upper bound, not a measurement.
+- Pattern so far: about 3.5 C HIGH at the ice point and LOW in hot water, i.e. pulled toward the 25 C cold junction at both ends, roughly 8 to 15 percent short on signal. A probe offset cannot correct that. Candidate causes, none confirmed: thermocouple wire that is not true K, non-K leads spliced inside the probe (the junction to those leads then acts as the cold junction), or stem conduction at shallow immersion. Offset left at 0.
+- Magnet test on the EGT lead ends: red is magnetic (Jason), as the K negative lead should be, so the leads are thermocouple wire and the spliced-plain-lead cause is unlikely.
+- Hot point, preheated container at the bench: EGT probe peaked at 84.89 C (60 s after immersion), then fell slowly, 83.7 C at about 90 s, last 30 s avg 83.40 C (82.57 to 84.16), cj 25.9 C, fault 0x00. Reference thermometer 192 F (88.9 C) (Jason; the exact second it was read is not recorded, asked for at about 90 s). EGT reads about 4 to 5 C LOW here, against about 3.5 C HIGH at the ice point. Straight line through the two points: reading = about 0.91 x true + 3.5 C; extrapolated (NOT measured) that is about 6 to 7 C low at 110 C. The reference thermometer's own accuracy is unverified. Offset left at 0: a single offset cannot correct both ends, and the firmware has no gain term.
+- DECISION 2026-10-04 (Jason): first rejected, then KEPT for the first tests with an offset; a replacement pit probe follows when convenient (doc 03 names the Procon B09HSJ4PBB; nothing ordered yet). `o 6.5` typed on the S3, `d` shows `offset=6.50 C`, saved to NVS. The 6.5 C is the two-point line extrapolated to a 110 C cook, not a measurement; with it the reading is about 10 C high at the ice point, which does not matter for a cook. Verify at the grate against the reference thermometer on the first fire. The bench-probe control was not run, so the board is not yet cleared as the cause.
+- 2026-10-05, fan bench, no S3 connected. Stage 1: Delta on straight 12 V (jack, 2 A fuse, 1N5819, fan fuse per doc 04), BLUE and YELLOW open: runs (Jason). Running current NOT reported. Stage 2 (doc 09 M9): IRLZ44N in the BLACK lead, gate 10 k to GND; YELLOW and BLUE each 10.85 V against ground, unchanged with a 10 k load to ground. The tach lead cannot go straight to GPIO5; fix not yet chosen.
+- Not done: the bench probe as a control in the same bath, the Delta's running current, the tach-lead fix, any fan lead on the S3.
+
 ## Next
-1. DONE 2026-09-25: pio run on JASON-PC confirmed (above). pio test -e native is blocked locally, see above.
+1. DONE 2026-09-25: pio run on JASON-PC confirmed (above). pio test -e native is blocked locally, see above. 2026-10-04: the tests run under WSL2 with g++ directly (section above).
 2. 2026-09-23 boards arrive: flash, confirm COM port, confirm CSV on Serial, confirm SMOKER-CTRL advertises (nRF Connect or similar), 10 characteristics.
 3. Wire blower per 04-phase1-wiring.md, MANUAL mode over BLE, measure min-start duty and pick PWM frequency, write values into config.h. Watch the long-PWM pulsing at commands below min-start.
-4. MAX31856 received; board 1 inspection PASS 2026-10-01 (above). Next: boiling/ice sanity, then step-response cook with the fan-off draft test first (doc 01 open items).
+4. MAX31856 received; board 1 inspection PASS 2026-10-01 and on the S3 2026-10-04 (above). Ice and hot-water points taken 2026-10-04 with the EGT probe (S3 bench session). Next: step-response cook with the fan-off draft test first (doc 01 open items).
 5. First real cook: log CSV, check that LID_OPEN triggers on a real lid event and not on wind; tune LID_OPEN_DROP_C_PER_S, FUEL_LOW, CREEP from the log.

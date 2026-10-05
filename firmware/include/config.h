@@ -10,9 +10,22 @@ namespace cfg {
 constexpr uint32_t CONTROL_PERIOD_MS = 1000;  // 1 Hz sample + duty update
 constexpr uint32_t WATCHDOG_TIMEOUT_MS = 5000;  // control task must feed TWDT within this
 
+// ---- Blower type ----
+// Delta BFB0712HH-AWPH, 4-wire (doc 04 "Blower loop"): the PWM lead is driven open-drain through a 2N7000, so
+// the GPIO duty is INVERTED; FAN_SUPPLY_EN gates the fan supply; the tach is supervised (doc 09 section 6a).
+// Build with -DBLOWER_LEGACY_2WIRE for the old 6 V brushed blower on a low-side MOSFET (no tach, no supply cut).
+#if defined(BLOWER_LEGACY_2WIRE)
+constexpr bool BLOWER_4WIRE = false;
+#else
+constexpr bool BLOWER_4WIRE = true;
+#endif
+
 // ---- Blower PWM ----
-// OPEN: bench-test 25 kHz vs 200 Hz on the real blower (arch doc section 4). 25 kHz is the starting value.
+// 4-wire: 25 kHz, inside the Intel 4-wire range of 21 to 28 kHz; the console and NVS are held to that range.
+// Legacy 2-wire: 25 kHz vs 200 Hz was a bench question (arch doc section 4).
 constexpr uint32_t BLOWER_PWM_FREQ_HZ = 25000;
+constexpr uint32_t BLOWER_4WIRE_FREQ_MIN_HZ = 21000;
+constexpr uint32_t BLOWER_4WIRE_FREQ_MAX_HZ = 28000;
 constexpr uint8_t  BLOWER_PWM_RES_BITS = 10;  // 0..1023 duty counts
 constexpr uint32_t BLOWER_PWM_MAX_COUNT = (1u << BLOWER_PWM_RES_BITS) - 1;
 // OPEN: minimum duty (percent) at which the brushed blower reliably spins from rest. Placeholder until measured.
@@ -25,6 +38,20 @@ constexpr uint8_t  BLOWER_MAX_DUTY_PCT = 60;
 // Cap for RAMP and RECOVERY until the setpoint is first reached (HeaterMeter startup max; PBC fan users cap at 50).
 constexpr uint8_t  STARTUP_MAX_DUTY_PCT = 50;
 constexpr uint32_t BLOWER_KICK_MS = 300;       // 100 percent kick when starting from OFF
+
+// ---- Fan tach supervision (4-wire only, doc 09 section 6a) ----
+// OPEN: pulses per revolution. The datasheet FG waveform reads as 2; count it on the bench (console: p <n>).
+constexpr uint8_t  FAN_TACH_PULSES_PER_REV = 2;
+constexpr uint32_t FAN_TACH_GLITCH_NS = 10000;  // PCNT glitch filter; a tach half-period at 4400 RPM is 3.4 ms
+constexpr uint16_t FAN_RATED_RPM = 4400;        // datasheet, +/- 10 percent
+// BLOWER_STALL: the fan is driven and the tach is silent for this long (driven seconds; long-PWM off time
+// does not count). Also what an open thermostat contact or a dead supply looks like.
+constexpr uint32_t FAN_STALL_S = 3;
+// BLOWER_RUNAWAY: measured RPM above (commanded share of rated + this margin of rated) for this long, which
+// is what a broken PWM lead looks like on this fan (it runs at full speed). Action: cut FAN_SUPPLY_EN.
+// OPEN: the margin assumes speed roughly linear in duty; check against the real RPM-vs-duty curve.
+constexpr uint8_t  FAN_RUNAWAY_MARGIN_PCT = 25;
+constexpr uint32_t FAN_RUNAWAY_S = 5;
 
 // ---- Temperature limits (Celsius) ----
 constexpr float SETPOINT_MIN_C = 60.0f;

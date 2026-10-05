@@ -3,6 +3,7 @@
 
 #include <algorithm>
 
+#include "control/fan_monitor.h"
 #include "control/long_pwm.h"
 #include "control/median_filter.h"
 #include "control/pid.h"
@@ -452,6 +453,122 @@ void test_sm_manual_passes_duty() {
     TEST_ASSERT_EQUAL_UINT8(100, c.duty_pct);
 }
 
+void test_sm_raise_fault_latches_first_fault_and_stops_blower() {
+    StateMachine sm(bench_thresholds(), {4.0f, 0.0f, 0.0f});
+    settleInHold(sm, 110.0f);
+    sm.raiseFault(Fault::BLOWER_RUNAWAY);
+    sm.raiseFault(Fault::BLOWER_STALL);  // ignored: the first fault stays latched
+    Command c = sm.tick(ok(100.0f));
+    expectState(c, State::FAULT);
+    TEST_ASSERT_EQUAL(static_cast<int>(Fault::BLOWER_RUNAWAY), static_cast<int>(c.fault));
+    TEST_ASSERT_EQUAL_UINT8(0, c.duty_pct);
+    sm.startCook(110.0f);  // refused until cleared
+    expectState(sm.tick(ok(100.0f)), State::FAULT);
+    sm.clearFault();
+    c = sm.tick(ok(100.0f));
+    expectState(c, State::IDLE);
+    TEST_ASSERT_EQUAL(static_cast<int>(Fault::NONE), static_cast<int>(c.fault));
+}
+
+void test_sm_raise_fault_ignored_in_idle_and_for_none() {
+    StateMachine sm(bench_thresholds(), {4.0f, 0.0f, 0.0f});
+    sm.raiseFault(Fault::BLOWER_STALL);
+    expectState(sm.tick(ok(25.0f)), State::IDLE);
+    sm.enterManual(40);
+    sm.raiseFault(Fault::NONE);
+    expectState(sm.tick(ok(25.0f)), State::MANUAL);
+}
+
+// ---------------------------------------------------------------- fan monitor (4-wire tach)
+// 4400 RPM rated, runaway above commanded share + 25 percent of rated for 5 s, stall after 3 driven seconds.
+// At 2 pulses per revolution and 1 s ticks, N pulses = 30 * N RPM.
+static FanMonitor bench_fan() { return FanMonitor(FanLimits{4400, 25, 3, 5}, 2); }
+
+static void expectFault(Fault expected, Fault actual) {
+    TEST_ASSERT_EQUAL(static_cast<int>(expected), static_cast<int>(actual));
+}
+
+void test_fan_rpm_from_pulses() {
+    FanMonitor f = bench_fan();
+    f.update(true, 50, 74, 1.0f);
+    TEST_ASSERT_EQUAL_FLOAT(2220.0f, f.rpm());
+    f.setPulsesPerRev(4);
+    f.update(true, 50, 74, 1.0f);
+    TEST_ASSERT_EQUAL_FLOAT(1110.0f, f.rpm());
+    f.setPulsesPerRev(0);  // guarded: treated as 1
+    TEST_ASSERT_EQUAL_UINT8(1, f.pulsesPerRev());
+}
+
+void test_fan_running_as_commanded_no_fault() {
+    FanMonitor f = bench_fan();
+    for (int i = 0; i < 60; ++i) expectFault(Fault::NONE, f.update(true, 30, 44, 1.0f));    // 1320 RPM at 30 percent
+    for (int i = 0; i < 60; ++i) expectFault(Fault::NONE, f.update(true, 0, 0, 1.0f));      // stopped at 0 percent
+    for (int i = 0; i < 60; ++i) expectFault(Fault::NONE, f.update(true, 100, 161, 1.0f));  // +10 percent fan flat out
+}
+
+void test_fan_stall_after_three_driven_seconds() {
+    FanMonitor f = bench_fan();
+    expectFault(Fault::NONE, f.update(true, 30, 0, 1.0f));
+    expectFault(Fault::NONE, f.update(true, 30, 0, 1.0f));
+    expectFault(Fault::BLOWER_STALL, f.update(true, 30, 0, 1.0f));
+}
+
+void test_fan_stall_counts_across_long_pwm_gaps_and_clears_on_pulses() {
+    FanMonitor f = bench_fan();
+    // Long PWM: driven one second in ten. A fan that never starts is caught on the third driven second.
+    for (int cycle = 0; cycle < 2; ++cycle) {
+        expectFault(Fault::NONE, f.update(true, 30, 0, 1.0f));
+        for (int i = 0; i < 9; ++i) expectFault(Fault::NONE, f.update(true, 0, 0, 1.0f));
+    }
+    expectFault(Fault::BLOWER_STALL, f.update(true, 30, 0, 1.0f));
+
+    FanMonitor g = bench_fan();
+    expectFault(Fault::NONE, g.update(true, 30, 0, 1.0f));
+    expectFault(Fault::NONE, g.update(true, 30, 0, 1.0f));
+    expectFault(Fault::NONE, g.update(true, 30, 44, 1.0f));  // it started: cleared
+    expectFault(Fault::NONE, g.update(true, 30, 0, 1.0f));
+    expectFault(Fault::NONE, g.update(true, 30, 0, 1.0f));
+}
+
+void test_fan_runaway_at_zero_command() {
+    FanMonitor f = bench_fan();
+    // Broken PWM lead: full speed while commanded off.
+    for (int i = 0; i < 4; ++i) expectFault(Fault::NONE, f.update(true, 0, 147, 1.0f));
+    expectFault(Fault::BLOWER_RUNAWAY, f.update(true, 0, 147, 1.0f));
+}
+
+void test_fan_runaway_at_max_duty_cap_even_on_a_slow_fan() {
+    FanMonitor f = bench_fan();
+    // 60 percent commanded allows 2640 + 1100 = 3740 RPM. A fan at the low end of tolerance (3960) still trips.
+    for (int i = 0; i < 4; ++i) expectFault(Fault::NONE, f.update(true, 60, 132, 1.0f));
+    expectFault(Fault::BLOWER_RUNAWAY, f.update(true, 60, 132, 1.0f));
+    FanMonitor g = bench_fan();
+    for (int i = 0; i < 60; ++i) expectFault(Fault::NONE, g.update(true, 60, 100, 1.0f));  // 3000 RPM: inside the margin
+}
+
+void test_fan_coast_down_is_not_runaway() {
+    FanMonitor f = bench_fan();
+    for (int i = 0; i < 10; ++i) expectFault(Fault::NONE, f.update(true, 60, 88, 1.0f));
+    for (uint32_t pulses : {80u, 60u, 45u, 38u, 20u, 5u, 0u, 0u}) expectFault(Fault::NONE, f.update(true, 0, pulses, 1.0f));
+}
+
+void test_fan_unpowered_or_disabled_reports_nothing() {
+    FanMonitor f = bench_fan();
+    for (int i = 0; i < 10; ++i) expectFault(Fault::NONE, f.update(false, 0, 147, 1.0f));  // supply cut: nothing to judge
+    // Accumulators do not carry over a supply cut.
+    for (int i = 0; i < 4; ++i) expectFault(Fault::NONE, f.update(true, 0, 147, 1.0f));
+    expectFault(Fault::NONE, f.update(false, 0, 147, 1.0f));
+    for (int i = 0; i < 4; ++i) expectFault(Fault::NONE, f.update(true, 0, 147, 1.0f));
+
+    FanMonitor g = bench_fan();
+    g.setEnabled(false);
+    for (int i = 0; i < 10; ++i) expectFault(Fault::NONE, g.update(true, 30, 0, 1.0f));
+    for (int i = 0; i < 10; ++i) expectFault(Fault::NONE, g.update(true, 0, 147, 1.0f));
+    TEST_ASSERT_EQUAL_FLOAT(4410.0f, g.rpm());  // still measured for the dump and the CSV
+    g.setEnabled(true);
+    expectFault(Fault::NONE, g.update(true, 30, 0, 1.0f));  // starts counting from zero when re-enabled
+}
+
 void setUp() {}
 void tearDown() {}
 
@@ -486,5 +603,15 @@ int main() {
     RUN_TEST(test_sm_creep_warning);
     RUN_TEST(test_sm_setpoint_change_reenters_ramp_with_cap);
     RUN_TEST(test_sm_manual_passes_duty);
+    RUN_TEST(test_sm_raise_fault_latches_first_fault_and_stops_blower);
+    RUN_TEST(test_sm_raise_fault_ignored_in_idle_and_for_none);
+    RUN_TEST(test_fan_rpm_from_pulses);
+    RUN_TEST(test_fan_running_as_commanded_no_fault);
+    RUN_TEST(test_fan_stall_after_three_driven_seconds);
+    RUN_TEST(test_fan_stall_counts_across_long_pwm_gaps_and_clears_on_pulses);
+    RUN_TEST(test_fan_runaway_at_zero_command);
+    RUN_TEST(test_fan_runaway_at_max_duty_cap_even_on_a_slow_fan);
+    RUN_TEST(test_fan_coast_down_is_not_runaway);
+    RUN_TEST(test_fan_unpowered_or_disabled_reports_nothing);
     return UNITY_END();
 }

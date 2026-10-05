@@ -17,6 +17,8 @@ static constexpr const char* K_MAX = "blw_max_pct";
 static constexpr const char* K_COOK = "cook_active";
 static constexpr const char* K_OFFSET = "probe_off_c";
 static constexpr const char* K_LID = "lid_detect";
+static constexpr const char* K_FAN_PPR = "fan_ppr";
+static constexpr uint8_t FAN_PPR_MAX = 8;
 
 Settings SettingsStore::load() {
     Settings s{};
@@ -32,6 +34,7 @@ Settings SettingsStore::load() {
     s.cook_active = p.getUChar(K_COOK, 0) != 0;
     s.probe_offset_c = p.getFloat(K_OFFSET, 0.0f);
     s.lid_detect = p.getUChar(K_LID, 1) != 0;
+    s.fan_tach_ppr = p.getUChar(K_FAN_PPR, cfg::FAN_TACH_PULSES_PER_REV);
     p.end();
 
     // Clamp anything a previous firmware may have stored out of range.
@@ -39,6 +42,12 @@ Settings SettingsStore::load() {
     if (s.blower_max_pct > 100) s.blower_max_pct = 100;
     if (s.blower_min_start_pct >= s.blower_max_pct) s.blower_min_start_pct = cfg::BLOWER_MIN_START_DUTY_PCT;
     if (s.probe_offset_c < -20.0f || s.probe_offset_c > 20.0f) s.probe_offset_c = 0.0f;
+    if (s.fan_tach_ppr < 1 || s.fan_tach_ppr > FAN_PPR_MAX) s.fan_tach_ppr = cfg::FAN_TACH_PULSES_PER_REV;
+    // A frequency saved while the 2-wire blower was fitted (for example 200 Hz) is out of range for the 4-wire fan.
+    if (cfg::BLOWER_4WIRE && (s.blower_pwm_freq_hz < cfg::BLOWER_4WIRE_FREQ_MIN_HZ ||
+                              s.blower_pwm_freq_hz > cfg::BLOWER_4WIRE_FREQ_MAX_HZ)) {
+        s.blower_pwm_freq_hz = cfg::BLOWER_PWM_FREQ_HZ;
+    }
     return s;
 }
 
@@ -55,6 +64,7 @@ void SettingsStore::save(const Settings& s) {
     p.putUChar(K_COOK, s.cook_active ? 1 : 0);
     p.putFloat(K_OFFSET, s.probe_offset_c);
     p.putUChar(K_LID, s.lid_detect ? 1 : 0);
+    p.putUChar(K_FAN_PPR, s.fan_tach_ppr);
     p.end();
 }
 

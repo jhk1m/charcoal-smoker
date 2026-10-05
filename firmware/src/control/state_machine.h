@@ -32,6 +32,8 @@ enum class Fault : uint8_t {
     PIT_OVER_LIMIT = 5,    // software over-temp
     WATCHDOG_RESET = 6,    // set at boot if reset reason was TWDT
     FIRE_OUT = 7,          // pit far below setpoint with the blower pegged for a long time
+    BLOWER_STALL = 8,      // 4-wire fan driven with no tach pulses (control::FanMonitor)
+    BLOWER_RUNAWAY = 9,    // 4-wire fan far faster than commanded: broken PWM lead (control::FanMonitor)
 };
 
 // Bitmask, recomputed every tick (FUEL_LOW is latched with a clear delay). Never affects the blower directly.
@@ -115,6 +117,7 @@ public:
     void enterManual(uint8_t duty_pct);        // any non-FAULT -> MANUAL
     void setManualDuty(uint8_t duty_pct);
     void clearFault();                         // FAULT -> IDLE
+    void raiseFault(Fault f);                  // fault found outside tick() (fan tach): any active state -> FAULT
     void setGains(PidGains g) { pid_.setGains(g); }
     void setThresholds(const Thresholds& t) { t_ = t; applyCaps(); }
     const Thresholds& thresholds() const { return t_; }

@@ -11,8 +11,10 @@
 
 #include "ble/ble_service.h"
 #include "config.h"
+#include "control/fan_monitor.h"
 #include "control/state_machine.h"
 #include "hal/blower.h"
+#include "hal/fan_tach.h"
 #include "hal/pit_sensor.h"
 #include "hal/watchdog.h"
 #include "log/event_log.h"
@@ -39,11 +41,15 @@ QueueHandle_t g_cmd_queue = nullptr;
 storage::SettingsStore g_store;
 storage::Settings g_settings;
 hal::Blower g_blower;
+hal::FanTach g_tach;
 hal::PitSensor g_pit(pins::TC_CS, pins::TC_MOSI, pins::TC_MISO, pins::TC_SCK);
 ble::Service g_ble;
 evlog::EventLog<cfg::EVENT_LOG_CAPACITY> g_log;
 ui::Console g_console;
 portMUX_TYPE g_log_mux = portMUX_INITIALIZER_UNLOCKED;
+
+const char* const CSV_HEADER =
+    "t_s,state,fault,pit_raw_c,pit_filt_c,cj_c,duty_cmd,duty_applied,tc_fault_bits,warnings,out_ema,rate_c_s,fan_rpm";
 
 control::Thresholds makeThresholds(const storage::Settings& s) {
     control::Thresholds t{};
@@ -120,8 +126,15 @@ void controlTask(void*) {
     sm.setSetpoint(g_settings.setpoint_c);
     sm.setLidDetectEnabled(g_settings.lid_detect);
 
+    // Fan tach supervision (4-wire). The legacy 2-wire blower has no tach, so the checks stay off for it.
+    control::FanMonitor fan_mon(
+        control::FanLimits{cfg::FAN_RATED_RPM, cfg::FAN_RUNAWAY_MARGIN_PCT, cfg::FAN_STALL_S, cfg::FAN_RUNAWAY_S},
+        g_settings.fan_tach_ppr);
+    fan_mon.setEnabled(cfg::BLOWER_4WIRE);
+
     ui::ConsoleDeps cd{};
     cd.sm = &sm;
+    cd.fan = &fan_mon;
     cd.blower = &g_blower;
     cd.pit = &g_pit;
     cd.settings = &g_settings;
@@ -147,7 +160,7 @@ void controlTask(void*) {
     // Reprint the banner from the control task: setup() prints are lost if the terminal attaches late.
     Serial.printf("# charcoal-smoker fw %s hw=%s tc=%s. Type ? for help.\n", FW_VERSION, pins::HW_NAME,
                   hal::PitSensor::backendName());
-    Serial.println("t_s,state,fault,pit_raw_c,pit_filt_c,cj_c,duty_cmd,duty_applied,tc_fault_bits,warnings,out_ema,rate_c_s");
+    Serial.println(CSV_HEADER);
 
     control::State last_state = sm.state();
     control::Fault last_fault = sm.fault();
@@ -206,6 +219,15 @@ void controlTask(void*) {
         }
         control::Sample s{r.filtered_c, r.ok, r.fault, dt_s};
 
+        // 2b. Fan tach (4-wire). The pulses counted since the previous tick are judged against the duty the
+        //     fan was given over that interval. A fault latches FAULT here, and step 4 then cuts the fan supply.
+        //     An unreadable counter reads as 0 pulses, which is a stall: fail safe.
+        if (cfg::BLOWER_4WIRE) {
+            uint32_t tach_pulses = 0;
+            if (!g_tach.take(tach_pulses)) tach_pulses = 0;
+            sm.raiseFault(fan_mon.update(g_blower.armed(), g_blower.appliedPercent(), tach_pulses, dt_s));
+        }
+
         // 3. Step the state machine.
         const control::Command cmd = sm.tick(s);
 
@@ -245,10 +267,10 @@ void controlTask(void*) {
         }
 
         // Serial telemetry (CSV) for bench logging / step-response capture. 'v' on the console mutes it.
-        if (g_console.csvEnabled()) Serial.printf("%lu,%s,%s,%.2f,%.2f,%.2f,%u,%u,0x%02x,0x%02x,%.1f,%.3f\n", static_cast<unsigned long>(now / 1000),
+        if (g_console.csvEnabled()) Serial.printf("%lu,%s,%s,%.2f,%.2f,%.2f,%u,%u,0x%02x,0x%02x,%.1f,%.3f,%.0f\n", static_cast<unsigned long>(now / 1000),
                       control::toString(cmd.state), control::toString(cmd.fault), r.raw_c, r.filtered_c,
                       r.cold_junction_c, g_blower.commandedPercent(), g_blower.appliedPercent(), r.fault_bits,
-                      cmd.warnings, sm.outputEma(), sm.rateCPerS());
+                      cmd.warnings, sm.outputEma(), sm.rateCPerS(), fan_mon.rpm());
     }
 }
 
@@ -264,17 +286,23 @@ void setup() {
     delay(200);
     Serial.println();
     Serial.printf("charcoal-smoker fw %s, reset reason %d\n", FW_VERSION, static_cast<int>(esp_reset_reason()));
-    Serial.println("t_s,state,fault,pit_raw_c,pit_filt_c,cj_c,duty_cmd,duty_applied,tc_fault_bits,warnings,out_ema,rate_c_s");
+    Serial.println(CSV_HEADER);
 
     g_settings = g_store.load();
 
-    // Blower first, forced OFF, before anything else can fail.
+    // Blower first, forced OFF (4-wire: fan supply cut), before anything else can fail.
     if (!g_blower.begin(pins::BLOWER_PWM, g_settings.blower_pwm_freq_hz, cfg::BLOWER_PWM_RES_BITS,
                         g_settings.blower_min_start_pct, g_settings.blower_max_pct, cfg::BLOWER_KICK_MS,
-                        cfg::BLOWER_LONG_PWM_PERIOD_S)) {
+                        cfg::BLOWER_LONG_PWM_PERIOD_S, cfg::BLOWER_4WIRE,
+                        cfg::BLOWER_4WIRE ? pins::FAN_SUPPLY_EN : -1)) {
         log_e("LEDC attach failed on GPIO%d", pins::BLOWER_PWM);
     }
     g_blower.off();
+
+    // Without a tach every cook stops on BLOWER_STALL, which is the safe outcome for a fan that cannot be watched.
+    if (cfg::BLOWER_4WIRE && !g_tach.begin(pins::FAN_TACH, cfg::FAN_TACH_GLITCH_NS)) {
+        log_e("fan tach counter failed to start on GPIO%d", pins::FAN_TACH);
+    }
 
     g_pit.setOffset(g_settings.probe_offset_c);
     if (!g_pit.begin(cfg::PIT_SENSOR_MIN_VALID_C, cfg::PIT_SENSOR_MAX_VALID_C)) {

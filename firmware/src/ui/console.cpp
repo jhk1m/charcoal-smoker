@@ -46,6 +46,8 @@ void Console::help() const {
     Serial.println("#   f <hz>       blower PWM frequency    n <pct>  blower min start duty");
     Serial.println("#   X <pct>      blower max duty         o <C>    probe offset (ice/boiling check)");
     Serial.println("#   l <0|1>      lid detection on/off");
+    Serial.println("#   p <n>        fan tach pulses per revolution, saved to NVS");
+    Serial.println("#   T <0|1>      fan tach faults off/on. NOT saved: on again at every boot. T 0 = bench with no fan");
     Serial.println("#   i            sensor identity check: run once with the probe open, once with T+ shorted to T-");
     Serial.println("#   t <C>        simulate the probe at C (no sensor needed); t off  returns to the sensor");
     Serial.println("#   t <C> <C/s>  simulate with a ramp, e.g.  t 25 0.5");
@@ -64,6 +66,13 @@ void Console::dump() const {
                   control::toString(d_.sm->state()), control::toString(d_.sm->fault()), d_.sm->warnings(),
                   d_.blower->commandedPercent(), d_.blower->appliedPercent(),
                   static_cast<double>(d_.sm->outputEma()), sim_ ? 1 : 0, static_cast<double>(sim_c_));
+    if (cfg::BLOWER_4WIRE) {
+        Serial.printf("# fan=4-wire tach_pin=%d supply_en_pin=%d supply=%d ppr=%u rpm=%.0f tach_faults=%d\n",
+                      pins::FAN_TACH, pins::FAN_SUPPLY_EN, d_.blower->supplyOn() ? 1 : 0, d_.fan->pulsesPerRev(),
+                      static_cast<double>(d_.fan->rpm()), d_.fan->enabled() ? 1 : 0);
+    } else {
+        Serial.println("# fan=legacy 2-wire (no tach, no supply cut)");
+    }
 }
 
 void Console::handleLine(char* line) {
@@ -150,7 +159,10 @@ void Console::handleLine(char* line) {
             return;
         }
         case 'f': {
-            const uint32_t hz = static_cast<uint32_t>(std::clamp(v1, 100.0f, 40000.0f));
+            // The 4-wire fan's PWM input is specified for 21 to 28 kHz only.
+            const float lo = cfg::BLOWER_4WIRE ? static_cast<float>(cfg::BLOWER_4WIRE_FREQ_MIN_HZ) : 100.0f;
+            const float hi = cfg::BLOWER_4WIRE ? static_cast<float>(cfg::BLOWER_4WIRE_FREQ_MAX_HZ) : 40000.0f;
+            const uint32_t hz = static_cast<uint32_t>(std::clamp(v1, lo, hi));
             if (!d_.blower->setFrequency(hz)) { Serial.println("# setFrequency failed"); return; }
             st.blower_pwm_freq_hz = d_.blower->frequency();
             d_.store->save(st);
@@ -188,6 +200,24 @@ void Console::handleLine(char* line) {
             st.lid_detect = en;
             d_.store->save(st);
             Serial.printf("# lid detect %s\n", en ? "on" : "off");
+            return;
+        }
+        case 'p': {
+            if (argc < 2) { Serial.println("# usage: p <pulses per revolution, 1..8>"); return; }
+            const uint8_t ppr = static_cast<uint8_t>(std::clamp(v1, 1.0f, 8.0f));
+            d_.fan->setPulsesPerRev(ppr);
+            st.fan_tach_ppr = ppr;
+            d_.store->save(st);
+            Serial.printf("# fan tach %u pulses per revolution\n", ppr);
+            return;
+        }
+        case 'T': {
+            if (!cfg::BLOWER_4WIRE) { Serial.println("# legacy 2-wire build: no tach"); return; }
+            if (argc < 2) { Serial.println("# usage: T <0|1>"); return; }
+            const bool en = v1 != 0.0f;
+            d_.fan->setEnabled(en);
+            Serial.printf("# fan tach faults %s%s\n", en ? "on" : "OFF",
+                          en ? "" : " until reboot: BLOWER_STALL and BLOWER_RUNAWAY are not checked");
             return;
         }
         case 'i': {
