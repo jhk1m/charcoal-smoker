@@ -171,9 +171,17 @@ void controlTask(void*) {
 
     TickType_t wake = xTaskGetTickCount();
     const TickType_t period = pdMS_TO_TICKS(cfg::CONTROL_PERIOD_MS);
+    const TickType_t slice = pdMS_TO_TICKS(cfg::BLOWER_SERVICE_MS);
 
     for (;;) {
-        vTaskDelayUntil(&wake, period);
+        // Sleep to the next tick in short slices, servicing the blower each time, so the start kick ends at
+        // BLOWER_KICK_MS instead of at the next 1 Hz tick. Single task, so the driver needs no locking.
+        const TickType_t tick_end = wake + period;
+        while (static_cast<int32_t>(xTaskGetTickCount() - tick_end) < 0) {
+            vTaskDelay(slice);
+            g_blower.service(millis());
+        }
+        wake = tick_end;
         hal::Watchdog::feed();
         const uint32_t now = millis();
         const float dt_s = (now - last_tick_ms) / 1000.0f;
@@ -235,7 +243,6 @@ void controlTask(void*) {
         if (cmd.state == control::State::FAULT || cmd.state == control::State::IDLE) g_blower.off();
         else g_blower.setDutyPercent(cmd.duty_pct, dt_s);
         if (cmd.state == control::State::FAULT) setCookActive(false);
-        g_blower.service(now);
         g_ble.service(now);
 
         // 5. Publish.

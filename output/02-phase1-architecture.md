@@ -42,13 +42,13 @@ Software on top, all implemented and unit-tested:
 - FIRE_OUT fault; FUEL_LOW, CREEP and pit-deviation warnings;
 - VALIDATED ON HARDWARE 2026-09-25: the over-temp path fired at 200 C and latched, and startCook is refused until the fault is cleared.
 
-New with the 4-wire fan, BUILT 2026-10-04, not yet run against the fan: this fan runs at FULL speed if its PWM lead is disconnected (datasheet). Detection is the tach; the action is dropping the supply-cut MOSFET, with the thermostat as the backstop. Faults BLOWER_STALL and BLOWER_RUNAWAY are specified in doc 09 section 6a. As built, the supply-cut MOSFET is also off in IDLE, so an idle controller cannot have a running fan whatever the state of the PWM lead. The low-side cut was measured 2026-10-05 (doc 09 M9): with it off, the fan's FG and PWM leads sit at 10.85 V, so the tach lead cannot reach the MCU as drawn in the diagram above. The fix is not yet chosen (blocking diode in the tach lead, a high-side cut, or no cut for the first tests).
+New with the 4-wire fan, BUILT 2026-10-04, driving the fan on the bench since 2026-10-10 (doc 05 "S3 fan bench"): this fan runs at FULL speed if its PWM lead is disconnected (datasheet). Detection is the tach; the action is dropping the supply-cut MOSFET, with the thermostat as the backstop. Faults BLOWER_STALL and BLOWER_RUNAWAY are specified in doc 09 section 6a. As built, the supply-cut MOSFET is also off in IDLE, so an idle controller cannot have a running fan whatever the state of the PWM lead. The low-side cut was measured 2026-10-05 (doc 09 M9): with it off, the fan's FG and PWM leads sit at 10.85 V, so the tach lead cannot reach the MCU as drawn in the diagram above. DECIDED 2026-10-09 (Jason): blocking diode in the tach lead, pull-up on the MCU side (doc 04 blower section); not yet built.
 
 ## 4. Blower drive
 - Delta BFB0712HH-AWPH: 12 V, 0.34 A rated / 0.42 A max, 15.3 CFM free air, 0.98 inH2O max static, 4400 RPM, 75.7 x 75.7 x 25 mm, -10 to 70 C.
 - PWM: logic input, 21 to 28 kHz per the Intel 4-wire spec, 25 kHz chosen. Driven open-drain by a 2N7000; the fan pulls the line up internally to at most 5.25 V. Duty is inverted in firmware. Never chop this fan's supply for speed control.
 - Rotor stops at 0 percent duty. Minimum start duty is at most 30 percent (datasheet), so the long-PWM path (10 s period at min-start) stays in use for low demand. VALIDATED ON HARDWARE with the simulated probe: at setpoint the loop commanded 1 percent and the HAL applied 0 percent between pulses.
-- Tach: open collector, 5 mA max, 4 poles. Pulses per revolution NOT VERIFIED; confirm on the bench.
+- Tach: open collector, 5 mA max, 4 poles. 2 pulses per revolution CONFIRMED 2026-10-10 (4615 RPM read at 100 percent with ppr 2, spec 4400 +/- 10 percent; doc 05 "S3 fan bench"). Through a 1N5822 and a 10 k pull-up on the MCU side (doc 04, M9).
 - The 25 kHz vs 200 Hz frequency comparison in the old plan no longer applies; it was a brushed-motor question.
 - Airflow through the measured duct: about 5.4 CFM at full duty, about 53 percent duty to hold 110 C (doc 06 section 3.1a).
 

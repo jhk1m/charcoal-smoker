@@ -103,6 +103,10 @@ bool PitSensor::begin(float min_valid_c, float max_valid_c) {
     present_ = dev_.begin();
     if (!present_) return false;
     dev_.setThermocoupleType(MAX31856_TCTYPE_K);
+    // Adafruit begin() returns true with no chip answering. An unpowered MAX31856 reads every register as
+    // 0x00 (seen 2026-10-04, doc 05), so require the type K just written to read back before calling it present.
+    present_ = dev_.getThermocoupleType() == MAX31856_TCTYPE_K;
+    if (!present_) return false;
     dev_.setNoiseFilter(MAX31856_NOISE_FILTER_60HZ);  // US mains
     dev_.setConversionMode(MAX31856_CONTINUOUS);
     filter_.reset();

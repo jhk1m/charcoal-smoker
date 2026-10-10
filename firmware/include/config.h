@@ -38,6 +38,7 @@ constexpr uint8_t  BLOWER_MAX_DUTY_PCT = 60;
 // Cap for RAMP and RECOVERY until the setpoint is first reached (HeaterMeter startup max; PBC fan users cap at 50).
 constexpr uint8_t  STARTUP_MAX_DUTY_PCT = 50;
 constexpr uint32_t BLOWER_KICK_MS = 300;       // 100 percent kick when starting from OFF
+constexpr uint32_t BLOWER_SERVICE_MS = 10;     // how often the control task ends an expired kick between ticks
 
 // ---- Fan tach supervision (4-wire only, doc 09 section 6a) ----
 // OPEN: pulses per revolution. The datasheet FG waveform reads as 2; count it on the bench (console: p <n>).
