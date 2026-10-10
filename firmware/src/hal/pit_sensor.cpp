@@ -75,7 +75,7 @@ PitReading PitSensor::read() {
 PitSensor::SelfTest PitSensor::selfTest() {
     SelfTest t{};
     t.has_register_test = false;  // read-only chip, nothing to write
-    if (!present_) begin(min_valid_c_, max_valid_c_);
+    begin(min_valid_c_, max_valid_c_);  // always re-probe: a chip unpowered after boot must read NOT DETECTED
     t.present = present_;
     if (!present_) return t;
     const uint32_t f = readFrame();
@@ -122,10 +122,17 @@ PitReading PitSensor::read() {
     }
 
     r.fault_bits = dev_.readFault();
-    r.raw_c = dev_.readThermocoupleTemperature() + offset_c_;
+    const float tc_c = dev_.readThermocoupleTemperature();
     r.cold_junction_c = dev_.readCJTemperature();
+    r.raw_c = tc_c + offset_c_;
 
-    if (r.fault_bits & MAX31856_FAULT_OPEN) {
+    // A MAX31856 that loses power after boot reads every register as 0x00: no fault bit, 0.00 C on both
+    // channels (bench 2026-10-10). A live chip never reads exactly 0.000 on both, so treat that as open.
+    if (r.fault_bits == 0 && tc_c == 0.0f && r.cold_junction_c == 0.0f) {
+        present_ = false;
+        r.ok = false;
+        r.fault = control::Fault::SENSOR_OPEN;
+    } else if (r.fault_bits & MAX31856_FAULT_OPEN) {
         r.ok = false;
         r.fault = control::Fault::SENSOR_OPEN;
     } else if (r.fault_bits & MAX31856_FAULT_OVUV) {
@@ -148,7 +155,7 @@ PitReading PitSensor::read() {
 PitSensor::SelfTest PitSensor::selfTest() {
     SelfTest t{};
     t.has_register_test = true;
-    if (!present_) begin(min_valid_c_, max_valid_c_);
+    begin(min_valid_c_, max_valid_c_);  // always re-probe: a chip unpowered after boot must read NOT DETECTED
     t.present = present_;
     if (!present_) return t;
     // Register readback: CR1 thermocouple-type field is writable on a real MAX31856 only.
