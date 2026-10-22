@@ -14,12 +14,14 @@ Builds on: 05 (firmware), 06 (research, proposals), 07 (parts).
 
 | Scenario | Reach setpoint | Startup overshoot | HOLD rms / max (quiet) | Worst in wind | Mean HOLD duty | Lid detected / false | FUEL_LOW lead before FIRE_OUT |
 |---|---|---|---|---|---|---|---|
-| nominal (defaults, 10 CFM, flap) | 40 min | 1.1 C | 0.47 / 3.8 C | 7.2 C | 29 % (75 % of HOLD in long-PWM) | 2 / 0 | 48 min |
-| no_flap, 110 C | 37 min | 6.0 C | 5.6 / 8.0 C | 7.6 C | 0.5 % | 2 / 0 | 38 min |
-| no_flap, 93 C | 26 min | 6.3 C | 18.3 / 24.7 C | 23.2 C | 0.3 % | 1 / 0 | 47 min |
-| flap, 93 C | 27 min | 1.5 C | 0.33 / 3.1 C | 5.8 C | 21 % | 2 / 0 | fuel lasted |
-| caps_removed (Phase 1 defaults) | 39 min | 7.9 C | 1.07 / 7.9 C | 7.3 C | 29 % | 2 / 0 | 40 min |
-| fan_20cfm, current caps | 40 min | 5.2 C | 0.58 / 5.2 C | 5.4 C | 13 % (99 % long-PWM) | 2 / 0 | 43 min |
+| nominal (defaults, Delta 15.3 CFM, flap) | 37 min | 3.4 C | 0.51 / 3.4 C | 6.2 C | 20 % (99 % of HOLD in long-PWM) | 2 / 0 | 43 min |
+| no_flap, 110 C | 40 min | 6.7 C | 6.0 / 8.3 C | 7.9 C | 0.6 % | 2 / 0 | 35 min |
+| no_flap, 93 C | 28 min | 7.0 C | 18.6 / 24.7 C | 23.4 C | 0.4 % | 1 / 0 | 43 min |
+| flap, 93 C | 26 min | 4.0 C | 0.42 / 4.0 C | 4.9 C | 15 % (100 % long-PWM) | 2 / 0 | fuel lasted |
+| caps_removed (Phase 1 defaults) | 45 min | 10.0 C | 1.33 / 10.4 C | 6.2 C | 20 % | 2 / 0 | 34 min |
+| fan_20cfm, current caps | 40 min | 4.9 C | 0.58 / 4.9 C | 5.1 C | 15 % (99 % long-PWM) | 2 / 0 | 39 min |
+
+Re-run 2026-10-22 with the plant's fan moved to the measured Delta (free air 15.3 CFM, stall 7 percent, start 10 percent; were 10 CFM, 22, 28) and the firmware's long-PWM changes (min-run hysteresis at 10, minimum on-phase 5 s with the period stretched). The 2026-09-21 numbers (10 CFM plant) were: nominal 40 min, 1.1 C, 0.47 / 3.8 C, 7.2 C, 29 % (75 % long-PWM), 48 min; flap 93 C 0.33 / 3.1 C; fan_20cfm 0.58 / 5.2 C. Read: with `BLOWER_MIN_START_DUTY_PCT` still 30 in config.h and a 15 CFM fan, HOLD lives almost entirely in long-PWM; the bench runs with `n 15`, which the sim does not use. The 2026-09-21 PNGs in sim/out were not regenerated (no matplotlib on the host).
 
 Burn rate in HOLD: 0.35 kg/h at 110 C, 0.27 kg/h at 93 C (inside the 0.3 to 0.6 kg/h planning range by construction).
 
@@ -41,5 +43,6 @@ Burn rate in HOLD: 0.35 kg/h at 110 C, 0.27 kg/h at 93 C (inside the 0.3 to 0.6 
 - Tests: 29/29 native pass (added latch test and the post-lid regression). pio run -e s3-n8r8 SUCCESS, 0 project warnings.
 
 ## Next
-- Replace plant parameters with measurements as they arrive (sim README lists which measurement feeds which parameter), then re-run and compare against the logged cook.
+- Replace plant parameters with measurements as they arrive (sim README lists which measurement feeds which parameter), then re-run and compare against the logged cook. DONE for the fan 2026-10-22; the rest wait on the first fire.
+- Consider lowering `BLOWER_MIN_START_DUTY_PCT` from 30 to the bench value 15 (Jason's call) and re-running: at 30 the sim sits in long-PWM for 99 percent of HOLD.
 - Add the rising-lid drum behaviour to the plant once a real lid event is logged (the current plant models a lid as a pure temperature drop).

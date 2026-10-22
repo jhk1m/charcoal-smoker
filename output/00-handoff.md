@@ -122,7 +122,7 @@ Running the whole loop with no wiring: flash, then `T 0` (no fan means no tach, 
 - IGNITE at a fixed 50 percent until within 17 C of setpoint. RAMP and RECOVERY capped at 50 percent duty and integral until the setpoint is first reached. HOLD up to the 60 percent max duty cap.
 - LID_OPEN on a falling-rate trigger (0.3 C/s, scaled with setpoint) with a fire-out guard, blower to 0, 30 s minimum, exit on setpoint, plateau or 240 s timeout into RECOVERY.
 - Long-PWM: for demand below the blower's minimum spin duty, a 10 s period at min-start duty, plus a 300 ms full-duty kick at every start from rest.
-- Warnings, which never touch the blower: PIT_HIGH, PIT_LOW, FUEL_LOW (latched, clears after 300 s clear), CREEP, LID_RISING. Faults: sensor open/short/range, over-temp, ignite timeout, FIRE_OUT, and since 2026-10-04 BLOWER_STALL (driven, no tach pulses for 3 driven seconds) and BLOWER_RUNAWAY (RPM above the commanded share of 4400 plus 1100 for 5 s).
+- Warnings, which never touch the blower: PIT_HIGH, PIT_LOW, FUEL_LOW (latched, clears after 300 s clear), CREEP, LID_RISING. Faults: sensor open/short/range, over-temp, ignite timeout, FIRE_OUT, and since 2026-10-04 BLOWER_STALL (driven, no tach pulses for 5 driven seconds; 3 until 2026-10-22) and BLOWER_RUNAWAY (RPM above the commanded share of 4400 plus 1100 for 5 s).
 - 4-wire fan drive (2026-10-04): GPIO duty inverted for the 2N7000 on the PWM lead; SUPPLY_EN low (fan unpowered) in IDLE and FAULT, high otherwise, raised only after the PWM value is set; PWM GPIO held low while the supply is cut. `-DBLOWER_LEGACY_2WIRE` builds the old model.
 - Charcoal-specific behaviour that drove these choices is in doc 06: lit-mass creep after a high-demand period, the forge effect, backdraft through the duct with no flap, fuel-exhaustion warning ahead of fire-out.
 
@@ -146,7 +146,7 @@ Purchasing status 2026-09-25 (doc 07, confirmed by Jason): everything for the fi
 - BUILT 2026-10-04, boots on the bare S3, has not driven the fan: 4-wire fan support. Inverted PWM duty, tach input on a pulse counter, BLOWER_STALL and BLOWER_RUNAWAY to the doc 09 section 6a definitions (action: drop the supply-cut MOSFET), fan-RPM in the dump and the CSV. Bench work it still owes, in order: the tach-lead fix that M9 calls for (M9 itself measured 2026-10-05), pulses per revolution (`p <n>`), start and run duty, RPM against duty at 30 to 60 percent (the runaway margin assumes roughly linear), then pull the tach lead and open the PWM lead to see each fault fire (doc 05).
 - Start kick: found 2026-10-04, not fixed. `Blower::service()` runs once per 1 Hz tick, so the kick lasts about 1 s, not the 300 ms of BLOWER_KICK_MS (doc 05).
 - Console `i`: found 2026-10-04, not fixed. An unpowered MAX31856 reads all zeros and `i` still prints `present` and `shorted-input PASS` (doc 05 "S3 bench session").
-- BLOWER_MIN_RUN_DUTY_PCT, only after the real fan's start and run duties are measured, so a spinning fan is not stopped for a small request.
+- DONE and BENCH-CHECKED 2026-10-22: BLOWER_MIN_RUN_DUTY_PCT = 10 (long-PWM hysteresis), plus a 5 s minimum long-PWM on-phase and a supply cut in the off-phase after a false BLOWER_STALL at setpoint (doc 05 "S3 bench session 2026-10-22"). FAN_STALL_S is 5.
 - Cook Manager (Phase 2): meat probes on an ADS1115, stall handling, done-and-hold, the juiciness logic in doc 06 section 6.
 - BLE config characteristics for gains, caps, offset and lid detect. Currently console-only.
 - Pairing button, buzzer, flash-persisted event log, OTA.

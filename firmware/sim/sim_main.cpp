@@ -19,7 +19,8 @@ using namespace control;
 class SimBlower {
 public:
     SimBlower(uint8_t min_start, uint8_t max_pct, double kick_s, uint32_t long_period_s)
-        : lp_(min_start, long_period_s), max_pct_(max_pct), kick_s_(kick_s) {}
+        : lp_(min_start, long_period_s, cfg::BLOWER_MIN_RUN_DUTY_PCT, cfg::BLOWER_LONG_PWM_MIN_ON_S),
+          max_pct_(max_pct), kick_s_(kick_s) {}
 
     void setDuty(uint8_t pct, float dt_s, double now) {
         if (pct > max_pct_) pct = max_pct_;
@@ -296,7 +297,7 @@ int main(int argc, char** argv) {
 
     Scenario base;
     base.name = "nominal";
-    base.description = "Firmware defaults, 10 CFM blower, flap installed, 4 kg basket, lid 90 s at 3 h and 20 s at 6 h, wind x2 at 5 h";
+    base.description = "Firmware defaults, Delta 15.3 CFM blower (measured start/stall duties), flap installed, 4 kg basket, lid 90 s at 3 h and 20 s at 6 h, wind x2 at 5 h";
     base.th = firmwareThresholds(cfg::BLOWER_MAX_DUTY_PCT);
     scs.push_back(base);
 

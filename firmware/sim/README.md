@@ -37,6 +37,6 @@ toolchain used by `pio run` does not emit it.
 
 ## Plant parameters to replace with measurements
 
-`fan_cfm_max`, `fan_stall_pct`, `fan_start_pct` (bench step 2), `draft_leak_cfm_at_90c` (fan-off draft test),
+`fan_cfm_max`, `fan_stall_pct`, `fan_start_pct` (DONE 2026-10-22 from the Delta datasheet and bench, doc 05), `draft_leak_cfm_at_90c` (fan-off draft test),
 `ua_w_per_k`, `chamber_heat_cap_j_per_k`, `bed_tau_s`, `heat_to_chamber` (step-response cook), `kg_c_per_m3_air`
 and burn rate (weigh the basket before and after a cook).

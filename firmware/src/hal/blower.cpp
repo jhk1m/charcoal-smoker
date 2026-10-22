@@ -4,8 +4,9 @@
 
 namespace hal {
 
-bool Blower::begin(int pin, uint32_t freq_hz, uint8_t res_bits, uint8_t min_start_pct, uint8_t max_pct, uint32_t kick_ms,
-                   uint32_t long_pwm_period_s, bool inverted, int supply_en_pin) {
+bool Blower::begin(int pin, uint32_t freq_hz, uint8_t res_bits, uint8_t min_start_pct, uint8_t min_run_pct, uint8_t max_pct,
+                   uint32_t kick_ms, uint32_t long_pwm_period_s, uint32_t long_pwm_min_on_s, bool inverted,
+                   int supply_en_pin) {
     pin_ = pin;
     supply_pin_ = supply_en_pin;
     inverted_ = inverted;
@@ -14,7 +15,7 @@ bool Blower::begin(int pin, uint32_t freq_hz, uint8_t res_bits, uint8_t min_star
     max_count_ = (1u << res_bits) - 1;
     max_pct_ = max_pct;
     kick_ms_ = kick_ms;
-    long_pwm_ = control::LongPwm(min_start_pct, long_pwm_period_s);
+    long_pwm_ = control::LongPwm(min_start_pct, long_pwm_period_s, min_run_pct, long_pwm_min_on_s);
 
     // Fan supply cut before anything else: the 10k gate pull-down has held it off through reset.
     if (supply_pin_ >= 0) {
@@ -64,6 +65,10 @@ void Blower::apply(uint8_t pct) {
     target_pct_ = pct;
     if (pct == 0) {
         kicking_ = false;
+        // Supply cut, not a PWM-lead stop: the next start is then a cold start, which is immediate on the
+        // Delta (a PWM-0 restart is not). Gate low with the supply off so the PWM lead is released.
+        armed_ = false;
+        setSupply(false);
         write(0);
         return;
     }
@@ -81,7 +86,7 @@ void Blower::setDutyPercent(uint8_t pct, float dt_s) {
     cmd_pct_ = pct;
     apply(long_pwm_.step(pct, dt_s));
     // PWM first, supply second: the fan never has power while its PWM lead is released (= full speed).
-    if (!armed_) {
+    if (!armed_ && applied_pct_ > 0) {
         armed_ = true;
         setSupply(true);
     }

@@ -15,7 +15,8 @@
 //
 // Duty handling (revised 2026-09-21, doc 06 P6): commands at or above min_start_pct are applied as-is;
 // commands between 1 and min_start_pct - 1 are emulated with long-period PWM (control::LongPwm) so the
-// average airflow can go below the minimum spin speed instead of being compressed into [min, max].
+// average airflow can go below the minimum spin speed instead of being compressed into [min, max]. Once the
+// fan is spinning the threshold drops to min_run_pct (BLOWER_MIN_RUN_DUTY_PCT) so it is not stop-started.
 // A 100 percent kick of kick_ms breaks stiction whenever the motor starts from OFF.
 #pragma once
 
@@ -28,11 +29,14 @@ namespace hal {
 class Blower {
 public:
     // inverted: 4-wire open-drain drive. supply_en_pin: fan supply gate, -1 = not fitted.
-    bool begin(int pin, uint32_t freq_hz, uint8_t res_bits, uint8_t min_start_pct, uint8_t max_pct, uint32_t kick_ms,
-               uint32_t long_pwm_period_s, bool inverted, int supply_en_pin);
+    bool begin(int pin, uint32_t freq_hz, uint8_t res_bits, uint8_t min_start_pct, uint8_t min_run_pct, uint8_t max_pct,
+               uint32_t kick_ms, uint32_t long_pwm_period_s, uint32_t long_pwm_min_on_s, bool inverted,
+               int supply_en_pin);
 
     // Commanded duty in percent (0..100). Call once per control tick (long PWM is stepped here).
-    // Enables the fan supply; a command of 0 keeps the fan powered and holds it stopped through the PWM lead.
+    // A non-zero applied duty enables the fan supply. An applied duty of 0 CUTS the supply (2026-10-22,
+    // doc 05): the Delta stopped through its PWM lead restarts 0 to 4+ s late or not at all within a
+    // long-PWM on-phase, while a cold start after a supply cut spun on the first tick 6 of 6 times.
     void setDutyPercent(uint8_t pct, float dt_s);
 
     // Emergency/unconditional off: cuts the fan supply and releases the PWM pin. Also called by fault paths.
@@ -53,7 +57,7 @@ public:
     uint8_t commandedPercent() const { return cmd_pct_; }
     uint8_t appliedPercent() const { return applied_pct_; }
 
-    // True between setDutyPercent() and off(): the fan is meant to be powered and under PWM control.
+    // True while the fan is powered and driven at a non-zero duty (supply on, PWM lead under control).
     bool armed() const { return armed_; }
     // Actual state of the SUPPLY_EN pin (always false when no supply pin is fitted).
     bool supplyOn() const { return supply_on_; }

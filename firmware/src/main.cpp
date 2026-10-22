@@ -299,8 +299,8 @@ void setup() {
 
     // Blower first, forced OFF (4-wire: fan supply cut), before anything else can fail.
     if (!g_blower.begin(pins::BLOWER_PWM, g_settings.blower_pwm_freq_hz, cfg::BLOWER_PWM_RES_BITS,
-                        g_settings.blower_min_start_pct, g_settings.blower_max_pct, cfg::BLOWER_KICK_MS,
-                        cfg::BLOWER_LONG_PWM_PERIOD_S, cfg::BLOWER_4WIRE,
+                        g_settings.blower_min_start_pct, cfg::BLOWER_MIN_RUN_DUTY_PCT, g_settings.blower_max_pct, cfg::BLOWER_KICK_MS,
+                        cfg::BLOWER_LONG_PWM_PERIOD_S, cfg::BLOWER_LONG_PWM_MIN_ON_S, cfg::BLOWER_4WIRE,
                         cfg::BLOWER_4WIRE ? pins::FAN_SUPPLY_EN : -1)) {
         log_e("LEDC attach failed on GPIO%d", pins::BLOWER_PWM);
     }

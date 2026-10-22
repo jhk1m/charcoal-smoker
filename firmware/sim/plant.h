@@ -18,9 +18,9 @@ struct PlantParams {
     double t_amb_c = 20.0;
 
     // Blower (brushed DC, supply-chopped). Flow is proportional to speed; speed follows duty with a lag.
-    double fan_cfm_max = 10.0;          // free-air CFM at 100 percent (current blower: unknown)
-    double fan_stall_pct = 22.0;        // below this applied duty a running motor stops
-    double fan_start_pct = 28.0;        // from rest, needs this much (or the kick) to break stiction
+    double fan_cfm_max = 15.3;          // Delta BFB0712HH-AWPH datasheet free-air CFM (was 10, generic guess)
+    double fan_stall_pct = 7.0;         // MEASURED 2026-10-22 bench: runs at 10, dies at 5 (was 22)
+    double fan_start_pct = 10.0;        // MEASURED 2026-10-10 bench: starts at 10 with the kick, 4 of 4 (was 28)
     double fan_tau_s = 0.6;             // motor spin-up time constant
     double duct_efficiency = 0.8;       // fraction of free-air flow delivered through the duct + flap
 

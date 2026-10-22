@@ -170,6 +170,55 @@ void test_long_pwm_below_min_duty_accounting() {
     TEST_ASSERT_EQUAL_INT(2, on);
 }
 
+void test_long_pwm_min_run_hysteresis() {
+    // Delta data (doc 09 M5): starts at 15, keeps running down to 10, dies at 5.
+    LongPwm lp(15, 10, 10);
+    // From rest a 12 percent request is below min-start: long PWM at 15 for 8 s of 10.
+    TEST_ASSERT_EQUAL_UINT8(15, lp.step(12, 1.0f));
+    // Now spinning: 12 is above min-run, so it passes through instead of stop-starting.
+    TEST_ASSERT_EQUAL_UINT8(12, lp.step(12, 1.0f));
+    TEST_ASSERT_EQUAL_UINT8(10, lp.step(10, 1.0f));
+    // Below min-run: back to long PWM (on-time 7/15 of 10 s = 4.67 s at 15, then 0).
+    TEST_ASSERT_EQUAL_UINT8(15, lp.step(7, 1.0f));
+    // An off tick of the long-PWM period re-arms the min-start threshold.
+    LongPwm lp2(15, 10, 10);
+    TEST_ASSERT_EQUAL_UINT8(15, lp2.step(3, 1.0f));   // 3/15 of 10 s = 2 s on at 15
+    TEST_ASSERT_EQUAL_UINT8(15, lp2.step(3, 1.0f));
+    TEST_ASSERT_EQUAL_UINT8(0, lp2.step(3, 1.0f));    // off part of the period: fan stops
+    TEST_ASSERT_EQUAL_UINT8(15, lp2.step(12, 1.0f));  // from rest again: min-start, not pass-through
+    TEST_ASSERT_EQUAL_UINT8(12, lp2.step(12, 1.0f));
+    // min_run 0 or above min_start = no hysteresis.
+    LongPwm lp3(15, 10, 0);
+    TEST_ASSERT_EQUAL_UINT8(15, lp3.minRunPct());
+    LongPwm lp4(15, 10, 30);
+    TEST_ASSERT_EQUAL_UINT8(15, lp4.minRunPct());
+    // reset() forgets the spinning state.
+    LongPwm lp5(15, 10, 10);
+    lp5.step(20, 1.0f);
+    lp5.reset();
+    TEST_ASSERT_EQUAL_UINT8(15, lp5.step(12, 1.0f));
+}
+
+void test_long_pwm_min_on_stretches_period() {
+    // 1 percent requested, min 15, period 10, min-on 5: on 5 s then off 70 s (average still 1 percent).
+    LongPwm lp(15, 10, 10, 5);
+    int on = 0, total = 0;
+    uint8_t first_zero_at = 0;
+    for (int i = 0; i < 150; ++i) {
+        const uint8_t v = lp.step(1, 1.0f);
+        ++total;
+        if (v == 15) ++on;
+        else if (first_zero_at == 0) first_zero_at = static_cast<uint8_t>(i);
+    }
+    TEST_ASSERT_EQUAL_UINT8(5, first_zero_at);   // 5 on-ticks before the first off tick
+    TEST_ASSERT_EQUAL_INT(10, on);               // 2 periods of 75 s in 150 s, 5 s on each
+    // 12 percent requested: on 8 s of 10 already exceeds min-on, so nothing changes (then pass-through).
+    LongPwm lp2(15, 10, 0, 5);
+    on = 0;
+    for (int i = 0; i < 20; ++i) if (lp2.step(12, 1.0f) == 15) ++on;
+    TEST_ASSERT_EQUAL_INT(16, on);
+}
+
 // ---------------------------------------------------------------- state machine
 void test_sm_starts_idle_blower_off() {
     StateMachine sm(bench_thresholds(), {4.0f, 0.02f, 0.0f});
@@ -584,6 +633,8 @@ int main() {
     RUN_TEST(test_pid_derivative_on_ema_opposes_rise);
     RUN_TEST(test_long_pwm_passthrough_at_or_above_min);
     RUN_TEST(test_long_pwm_below_min_duty_accounting);
+    RUN_TEST(test_long_pwm_min_run_hysteresis);
+    RUN_TEST(test_long_pwm_min_on_stretches_period);
     RUN_TEST(test_sm_starts_idle_blower_off);
     RUN_TEST(test_sm_ignite_to_ramp_to_hold);
     RUN_TEST(test_sm_startup_cap_then_full_authority_after_crossing);

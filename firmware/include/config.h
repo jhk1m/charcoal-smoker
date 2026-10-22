@@ -28,10 +28,21 @@ constexpr uint32_t BLOWER_4WIRE_FREQ_MIN_HZ = 21000;
 constexpr uint32_t BLOWER_4WIRE_FREQ_MAX_HZ = 28000;
 constexpr uint8_t  BLOWER_PWM_RES_BITS = 10;  // 0..1023 duty counts
 constexpr uint32_t BLOWER_PWM_MAX_COUNT = (1u << BLOWER_PWM_RES_BITS) - 1;
-// OPEN: minimum duty (percent) at which the brushed blower reliably spins from rest. Placeholder until measured.
-// Commands below this are emulated with long-period PWM (doc 06 P6, HeaterMeter) instead of being clamped up.
+// Minimum duty (percent) at which the blower reliably spins from rest. NVS default; the bench value for the
+// Delta is 15 (`n 15`, measured 2026-10-10: starts at 10 with the kick, 4 of 4). Commands below the active
+// threshold are emulated with long-period PWM (doc 06 P6, HeaterMeter) instead of being clamped up.
 constexpr uint8_t  BLOWER_MIN_START_DUTY_PCT = 30;
+// Minimum duty at which an already spinning fan keeps running (Delta: runs at 10, dies at 5; doc 09 M5).
+// Hysteresis for the long-PWM threshold: a spinning fan is not stopped for a request between here and
+// BLOWER_MIN_START_DUTY_PCT. Must be at or below the min-start duty; LongPwm clamps it there.
+constexpr uint8_t  BLOWER_MIN_RUN_DUTY_PCT = 10;
 constexpr uint32_t BLOWER_LONG_PWM_PERIOD_S = 10;
+// Minimum long-PWM on-time. MEASURED 2026-10-22 on the Delta (doc 05): after a stop through the PWM lead
+// (supply on, 0 percent) the fan restarts on its own 0 to 3 s after the next non-zero duty, kick or not, so a
+// one-tick on-phase often sees no tach pulse at all and the stall counter adds up across the gaps (false
+// BLOWER_STALL at setpoint). 5 s = 3 s restart + 1 s tach lag + 1 s margin. The period stretches above
+// BLOWER_LONG_PWM_PERIOD_S when needed so the average duty is still requested/min_start.
+constexpr uint32_t BLOWER_LONG_PWM_MIN_ON_S = 5;
 // Software clamp. Drum smokers need a whisper of air: 20 to 25 CFM fans at full duty cool the pit and blow ash
 // (doc 06 section 1 item 4, section 1b item 3). Tunable over BLE / NVS.
 constexpr uint8_t  BLOWER_MAX_DUTY_PCT = 60;
@@ -47,7 +58,7 @@ constexpr uint32_t FAN_TACH_GLITCH_NS = 10000;  // PCNT glitch filter; a tach ha
 constexpr uint16_t FAN_RATED_RPM = 4400;        // datasheet, +/- 10 percent
 // BLOWER_STALL: the fan is driven and the tach is silent for this long (driven seconds; long-PWM off time
 // does not count). Also what an open thermostat contact or a dead supply looks like.
-constexpr uint32_t FAN_STALL_S = 3;
+constexpr uint32_t FAN_STALL_S = 5;  // was 3; the Delta restarts up to 3 s late after a PWM-lead stop (2026-10-22, doc 05)
 // BLOWER_RUNAWAY: measured RPM above (commanded share of rated + this margin of rated) for this long, which
 // is what a broken PWM lead looks like on this fan (it runs at full speed). Action: cut FAN_SUPPLY_EN.
 // OPEN: the margin assumes speed roughly linear in duty; check against the real RPM-vs-duty curve.
