@@ -1,6 +1,7 @@
 #include "console.h"
 
 #include <Arduino.h>
+#include <NimBLEDevice.h>
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
@@ -61,7 +62,7 @@ void Console::poll() {
 
 void Console::help() const {
     out_.println("# commands (values in C and percent)");
-    out_.println("#   ?            this help              d   dump settings and state");
+    out_.println("#   ?            this help              d   dump settings and state   B [clear]  BLE bonds");
     out_.println("#   v            toggle the CSV stream   r   reset NVS to defaults and reboot");
     out_.println("#   s <C>        setpoint                c   start cook   x  stop   k  clear fault");
     out_.println("#   m <pct>      manual mode at duty     m   with no value exits to stop");
@@ -111,6 +112,18 @@ void Console::handleLine(char* line) {
 
     switch (cmd) {
         case '?': help(); return;
+        case 'B': {
+            // BLE bonds: `B` lists the count and addresses, `B clear` deletes them all (every phone and PC must then
+            // forget the device and pair again inside the window). Added 2026-10-23 chasing a stale-key MIC failure.
+            if (argc > 1 && strcmp(argv[1], "clear") == 0) {
+                NimBLEDevice::deleteAllBonds();
+                out_.println("# all BLE bonds deleted");
+            }
+            const int n = NimBLEDevice::getNumBonds();
+            out_.printf("# BLE bonds stored: %d\n", n);
+            for (int i = 0; i < n; ++i) out_.printf("#   %s\n", NimBLEDevice::getBondedAddress(i).toString().c_str());
+            return;
+        }
         case 'd': dump(); return;
         case 'v':
             csv_ = !csv_;

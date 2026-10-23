@@ -77,6 +77,7 @@ private:
     NimBLECharacteristic* ch_telem_ = nullptr;
     void notifyText(NimBLECharacteristic* ch, const char* text, size_t len);
     bool pairing_open_ = false;
+    bool pairing_allowed_ = false;  // window state when the current pairing showed its passkey
     uint32_t pairing_end_ms_ = 0;
     int bonds_at_connect_ = 0;
 };

@@ -13,6 +13,7 @@ public:
 
     void onConnect(NimBLEServer* /*pServer*/, NimBLEConnInfo& connInfo) override {
         s_.bonds_at_connect_ = NimBLEDevice::getNumBonds();
+        s_.pairing_allowed_ = s_.pairing_open_;  // refined in onPassKeyDisplay when the PIN prompt appears
         log_i("BLE connect %s (bonds stored: %d)", connInfo.getAddress().toString().c_str(), s_.bonds_at_connect_);
     }
 
@@ -26,6 +27,10 @@ public:
     // keys are stored. Deleting the bond afterwards (below) left the phone holding half a bond, and iOS then
     // refused every later connect with "peer removed pairing information" (2026-10-23).
     uint32_t onPassKeyDisplay() override {
+        // The decision is taken HERE, when the phone shows its PIN prompt. Typing takes a while and a pairing that
+        // started inside the window must be accepted even if it completes after it (2026-10-23: a phone finished
+        // typing at 96 s, the bond was deleted, iOS kept its half).
+        s_.pairing_allowed_ = s_.pairing_open_;
         if (s_.pairing_open_) return cfg::BLE_PASSKEY;
         log_w("BLE passkey requested outside the pairing window: presenting a random one");
         return esp_random() % 1000000u;
@@ -42,7 +47,7 @@ public:
         // previously paired phones reconnect freely after a reboot.
         const NimBLEAddress id = connInfo.getIdAddress();
         const bool new_bond = NimBLEDevice::getNumBonds() > s_.bonds_at_connect_;
-        if (new_bond && !s_.pairing_open_) {
+        if (new_bond && !s_.pairing_allowed_) {
             log_w("BLE bond attempt outside pairing window from %s; rejecting", id.toString().c_str());
             NimBLEDevice::deleteBond(id);
             s_.server_->disconnect(connInfo);
@@ -61,8 +66,10 @@ public:
     explicit CharCb(Service& s) : s_(s) {}
 
     void onWrite(NimBLECharacteristic* ch, NimBLEConnInfo& connInfo) override {
-        if (!connInfo.isEncrypted()) return;  // belt and braces; WRITE_ENC already enforces this
         const NimBLEAttValue& v = ch->getValue();
+        log_i("BLE write %s len=%u enc=%d", ch->getUUID().toString().c_str() + 32, static_cast<unsigned>(v.size()),
+              connInfo.isEncrypted() ? 1 : 0);
+        if (!connInfo.isEncrypted()) return;  // belt and braces; WRITE_ENC already enforces this
 
         if (ch == s_.ch_setpoint_) {
             if (v.size() < sizeof(float)) return;
@@ -115,7 +122,10 @@ bool Service::begin(const char* device_name, uint32_t passkey, const Handlers& h
     if (!NimBLEDevice::init(device_name)) return false;
     NimBLEDevice::setSecurityAuth(/*bonding=*/true, /*mitm=*/true, /*sc=*/true);
     NimBLEDevice::setSecurityIOCap(BLE_HS_IO_DISPLAY_ONLY);  // we "display" the static passkey; phone enters it
-    NimBLEDevice::setSecurityPasskey(passkey);
+    // NOT setSecurityPasskey(passkey): NimBLE 2.5.1 then injects that value itself and never calls
+    // onPassKeyDisplay (NimBLEServer.cpp, BLE_SM_IOACT_DISP only consults the callback when the static passkey is
+    // the default 123456). The callback is where the pairing-window decision lives, so leave the default in place.
+    (void)passkey;
 
     server_ = NimBLEDevice::createServer();
     if (!server_) return false;

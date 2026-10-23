@@ -152,6 +152,6 @@ constexpr const char* UUID_TELEMETRY   = "7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a000e";
 #define SMOKER_BLE_PASSKEY 0
 #endif
 constexpr uint32_t BLE_PASSKEY = SMOKER_BLE_PASSKEY;
-constexpr uint32_t BLE_PAIRING_WINDOW_MS = 60 * 1000;
+constexpr uint32_t BLE_PAIRING_WINDOW_MS = 120 * 1000;  // 60 s was too short for a phone PIN prompt (2026-10-23)
 
 }  // namespace cfg

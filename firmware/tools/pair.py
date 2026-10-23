@@ -1,4 +1,4 @@
-"""pair.py [COMx]  -- bond JASON-PC to SMOKER-CTRL with the static passkey (WinRT custom pairing, ProvidePin).
+"""pair.py [COMx] [--unpair]  -- bond JASON-PC to SMOKER-CTRL (--unpair removes the Windows side of the bond) with the static passkey (WinRT custom pairing, ProvidePin).
 Optionally pulses RTS on COMx first to reset the board, so the 60 s pairing window is open.
 Passkey is read from firmware/.env, never typed on a command line."""
 import asyncio, os, re, sys, time
@@ -9,7 +9,7 @@ from winrt.windows.devices.enumeration import DevicePairingKinds, DevicePairingP
 ENV = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")  # firmware/.env, git-ignored
 PIN = re.search(r"SMOKER_BLE_PASSKEY\s*=\s*(\d+)", open(ENV).read()).group(1)
 
-if len(sys.argv) > 1:
+if len(sys.argv) > 1 and not sys.argv[1].startswith("--"):
     import serial
     with serial.Serial() as s:
         s.port, s.baudrate = sys.argv[1], 115200
@@ -25,6 +25,10 @@ async def main():
     ble = await BluetoothLEDevice.from_bluetooth_address_async(addr)
     pairing = ble.device_information.pairing
     print("paired already:", pairing.is_paired, "can pair:", pairing.can_pair)
+    if "--unpair" in sys.argv:
+        res = await pairing.unpair_async()
+        print("unpair:", res.status)
+        return
     if pairing.is_paired:
         return
     custom = pairing.custom
