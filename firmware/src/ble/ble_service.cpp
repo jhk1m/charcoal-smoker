@@ -77,6 +77,12 @@ public:
             uint16_t min;
             memcpy(&min, v.data(), sizeof(min));
             if (s_.h_.on_timer) s_.h_.on_timer(min);
+        } else if (ch == s_.ch_console_) {
+            char line[96];
+            const size_t n = v.size() < sizeof(line) - 1 ? v.size() : sizeof(line) - 1;
+            memcpy(line, v.data(), n);
+            line[n] = '\0';
+            if (s_.h_.on_console) s_.h_.on_console(line);
         }
     }
 
@@ -112,23 +118,29 @@ bool Service::begin(const char* device_name, uint32_t passkey, const Handlers& h
     NimBLEService* svc = server_->createService(cfg::UUID_SERVICE);
     auto* cb = new CharCb(*this);
 
+    // NimBLE grants the ATT write/read permission only with the plain WRITE/READ flag; WRITE_ENC and WRITE_AUTHEN
+    // are modifiers on top of it (ble_gatts.c ble_gatts_chr_properties). Without P::WRITE every write came back
+    // Write Not Permitted (found 2026-10-22, first phone-side write test).
     using P = NIMBLE_PROPERTY;
     ch_pit_ = svc->createCharacteristic(cfg::UUID_PIT_TEMP, P::READ | P::NOTIFY, sizeof(float));
-    ch_setpoint_ = svc->createCharacteristic(cfg::UUID_SETPOINT, P::READ | P::WRITE_ENC | P::WRITE_AUTHEN | P::NOTIFY, sizeof(float));
+    ch_setpoint_ = svc->createCharacteristic(cfg::UUID_SETPOINT, P::READ | P::WRITE | P::WRITE_ENC | P::WRITE_AUTHEN | P::NOTIFY, sizeof(float));
     ch_duty_ = svc->createCharacteristic(cfg::UUID_BLOWER_DUTY, P::READ | P::NOTIFY, 1);
     ch_state_ = svc->createCharacteristic(cfg::UUID_STATE, P::READ | P::NOTIFY, 1);
     ch_fault_ = svc->createCharacteristic(cfg::UUID_FAULT, P::READ | P::NOTIFY, 1);
-    ch_mode_ = svc->createCharacteristic(cfg::UUID_MODE, P::WRITE_ENC | P::WRITE_AUTHEN, 1);
-    ch_manual_ = svc->createCharacteristic(cfg::UUID_MANUAL_DUTY, P::WRITE_ENC | P::WRITE_AUTHEN, 1);
-    ch_log_ = svc->createCharacteristic(cfg::UUID_EVENT_LOG, P::READ_ENC, sizeof(evlog::Event));
+    ch_mode_ = svc->createCharacteristic(cfg::UUID_MODE, P::WRITE | P::WRITE_ENC | P::WRITE_AUTHEN, 1);
+    ch_manual_ = svc->createCharacteristic(cfg::UUID_MANUAL_DUTY, P::WRITE | P::WRITE_ENC | P::WRITE_AUTHEN, 1);
+    ch_log_ = svc->createCharacteristic(cfg::UUID_EVENT_LOG, P::READ | P::READ_ENC, sizeof(evlog::Event));
     ch_info_ = svc->createCharacteristic(cfg::UUID_DEVICE_INFO, P::READ, 64);
     ch_warn_ = svc->createCharacteristic(cfg::UUID_WARNINGS, P::READ | P::NOTIFY, 1);
-    ch_timer_ = svc->createCharacteristic(cfg::UUID_TIMER, P::READ | P::WRITE_ENC | P::WRITE_AUTHEN, sizeof(uint16_t));
+    ch_timer_ = svc->createCharacteristic(cfg::UUID_TIMER, P::READ | P::WRITE | P::WRITE_ENC | P::WRITE_AUTHEN | P::NOTIFY, sizeof(uint16_t));
+    ch_console_ = svc->createCharacteristic(cfg::UUID_CONSOLE, P::WRITE | P::WRITE_ENC | P::WRITE_AUTHEN | P::NOTIFY, 96);
+    ch_telem_ = svc->createCharacteristic(cfg::UUID_TELEMETRY, P::NOTIFY, 160);
 
     ch_setpoint_->setCallbacks(cb);
     ch_mode_->setCallbacks(cb);
     ch_manual_->setCallbacks(cb);
     ch_log_->setCallbacks(cb);
+    ch_console_->setCallbacks(cb);
     ch_info_->setValue(device_info);
 
     const float zero_f = 0.0f;
@@ -192,6 +204,27 @@ void Service::publishWarnings(uint8_t mask) {
     if (!ch_warn_) return;
     ch_warn_->setValue(mask);
     if (connected()) ch_warn_->notify();
+}
+
+// Chunked at the peer's ATT MTU minus 3, because the NimBLE host truncates longer notifications silently.
+// ponytail: first peer's MTU only; one phone or PC at a time is the use case.
+void Service::notifyText(NimBLECharacteristic* ch, const char* text, size_t len) {
+    if (!ch || !connected() || len == 0) return;
+    const uint16_t mtu = server_->getPeerInfo(0).getMTU();
+    const size_t chunk = mtu > 3 ? mtu - 3 : 20;
+    for (size_t off = 0; off < len; off += chunk) {
+        const size_t n = len - off < chunk ? len - off : chunk;
+        ch->notify(reinterpret_cast<const uint8_t*>(text + off), n);
+    }
+}
+
+void Service::publishTelemetry(const char* csv_line) { notifyText(ch_telem_, csv_line, strlen(csv_line)); }
+void Service::publishConsole(const char* text, size_t len) { notifyText(ch_console_, text, len); }
+
+void Service::publishTimer(uint16_t minutes_left) {
+    if (!ch_timer_) return;
+    ch_timer_->setValue(minutes_left);
+    if (connected()) ch_timer_->notify();
 }
 
 bool Service::connected() const { return server_ && server_->getConnectedCount() > 0; }

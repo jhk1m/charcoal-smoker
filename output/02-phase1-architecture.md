@@ -73,9 +73,10 @@ Secondary (Phase 2): two ThermoWorks Pro-Series thermistor probes on an ADS1115.
 - Tuning: gains are still placeholders. Derive them from a step-response cook.
 
 ## 7. BLE
-- ESP32-S3 as GATT server, phone as client. One service, 10 characteristics (pit, setpoint, duty, state, fault, mode, manual duty, event log, device info, warnings). Byte formats in the firmware README.
+- ESP32-S3 as GATT server, phone as client. One service, 13 characteristics (pit, setpoint, duty, state, fault, mode, manual duty, event log, device info, warnings, timer, console, telemetry). Byte formats in the firmware README.
+- Debug channels (2026-10-22): `000d` carries the bench console over BLE (write a line, replies notified back; one parser for serial and BLE) and `000e` notifies the 1 Hz CSV line. Anything the bench can do over USB can be done from a bonded phone or PC. `firmware/tools/ui.html` is the Web Bluetooth front end (single file, Chrome or Edge, PC or Android): live cards, chart, buttons, console box, CSV download. Rendered and parsed clean on JASON-PC; the connect step is blocked there by Chrome's own Bluetooth content setting (Jason to allow it), so not yet proven against the board.
 - Security: bonding + MITM + SC with a static passkey, 60 s pairing window, boot-opened until the pairing button exists. Writes require an encrypted, authenticated link.
-- Verified on hardware: NimBLE starts, host syncs, pairing window opens and closes. Phone-side reads and writes NOT yet tested.
+- Verified on hardware: NimBLE starts, host syncs, pairing window opens and closes. 2026-10-22: bonded from JASON-PC (WinRT ProvidePin, passkey), reads, writes and notifications proven (`firmware/tools/pair.py`, `ble.py`). That test found every write characteristic refusing writes (missing plain WRITE flag; doc 05 "BLE debug channels"), fixed the same day.
 - No config characteristics yet: PWM frequency, gains, min-start, max duty, probe offset and lid-detect are console-only. BLE equivalents are Phase 2.
 
 ## 8. Firmware stack

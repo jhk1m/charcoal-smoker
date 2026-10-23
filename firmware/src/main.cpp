@@ -142,6 +142,7 @@ void controlTask(void*) {
     cd.store = &g_store;
     cd.makeThresholds = &makeThresholds;
     cd.setCookActive = &setCookActive;
+    cd.remoteOut = [](const char* t, size_t n) { g_ble.publishConsole(t, n); };
     g_console.begin(cd);
 
     // Power-loss resume (doc 06 P8): a cook that was running when power dropped restarts through IGNITE,
@@ -166,6 +167,7 @@ void controlTask(void*) {
     control::State last_state = sm.state();
     control::Fault last_fault = sm.fault();
     uint8_t last_warn = 0;
+    uint16_t last_timer_min = 0xFFFF;
     uint8_t last_duty = 255;
     uint32_t last_tick_ms = millis();
     uint32_t sample_counter = 0;
@@ -267,6 +269,13 @@ void controlTask(void*) {
             logEvent(evlog::EventType::FAULT, static_cast<uint8_t>(cmd.fault), 0, r.filtered_c);
             log_w("fault -> %s (bits 0x%02x)", control::toString(cmd.fault), r.fault_bits);
         }
+        // Timer: minutes left, rounded up, so a reader sees the countdown and 0 when it is done or unset. Until
+        // 2026-10-22 the read value stayed at whatever was last WRITTEN, so a phone showed a timer that was not running.
+        const uint16_t timer_min = static_cast<uint16_t>((sm.timerS() + 59u) / 60u);
+        if (timer_min != last_timer_min) {
+            last_timer_min = timer_min;
+            g_ble.publishTimer(timer_min);
+        }
         if (cmd.warnings != last_warn) {
             last_warn = cmd.warnings;
             g_ble.publishWarnings(cmd.warnings);
@@ -278,10 +287,14 @@ void controlTask(void*) {
         }
 
         // Serial telemetry (CSV) for bench logging / step-response capture. 'v' on the console mutes it.
-        if (g_console.csvEnabled()) Serial.printf("%lu,%s,%s,%.2f,%.2f,%.2f,%u,%u,0x%02x,0x%02x,%.1f,%.3f,%.0f\n", static_cast<unsigned long>(now / 1000),
-                      control::toString(cmd.state), control::toString(cmd.fault), r.raw_c, r.filtered_c,
-                      r.cold_junction_c, g_blower.commandedPercent(), g_blower.appliedPercent(), r.fault_bits,
-                      cmd.warnings, sm.outputEma(), sm.rateCPerS(), fan_mon.rpm());
+        //    The same line goes out on BLE 000e whenever a peer is connected; 'v' mutes serial only.
+        char csv[160];
+        snprintf(csv, sizeof(csv), "%lu,%s,%s,%.2f,%.2f,%.2f,%u,%u,0x%02x,0x%02x,%.1f,%.3f,%.0f\n", static_cast<unsigned long>(now / 1000),
+                 control::toString(cmd.state), control::toString(cmd.fault), r.raw_c, r.filtered_c,
+                 r.cold_junction_c, g_blower.commandedPercent(), g_blower.appliedPercent(), r.fault_bits,
+                 cmd.warnings, sm.outputEma(), sm.rateCPerS(), fan_mon.rpm());
+        if (g_console.csvEnabled()) Serial.print(csv);
+        g_ble.publishTelemetry(csv);
     }
 }
 
@@ -329,6 +342,7 @@ void setup() {
     h.on_manual_duty = [](uint8_t d) { post(Cmd{CmdType::MANUAL_DUTY, 0.0f, d}); };
     h.on_timer = [](uint16_t min) { post(Cmd{CmdType::TIMER, static_cast<float>(min), 0}); };
     h.on_log_pop = popEvent;
+    h.on_console = [](const char* line) { g_console.inject(line); };
 
     char info[64];
     snprintf(info, sizeof(info), "smoker-ctrl fw=%s hw=%s tc=%s", FW_VERSION, pins::HW_NAME, hal::PitSensor::backendName());

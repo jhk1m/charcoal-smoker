@@ -31,6 +31,7 @@ struct Handlers {
     std::function<void(uint8_t)> on_manual_duty;        // percent
     std::function<void(uint16_t)> on_timer;             // cook timer, minutes; 0 clears
     std::function<bool(evlog::Event&)> on_log_pop;      // pop oldest event for chunked read; false if empty
+    std::function<void(const char*)> on_console;        // one bench-console line (NUL terminated, <= 95 chars)
 };
 
 class Service {
@@ -44,6 +45,10 @@ public:
     void publishFault(control::Fault f);
     void publishSetpoint(float c);
     void publishWarnings(uint8_t mask);
+    void publishTimer(uint16_t minutes_left);  // 000c read value and notify; 0 = no timer
+    // Debug channels. Text is chunked to the peer MTU; nothing is sent with no peer connected.
+    void publishTelemetry(const char* csv_line);           // 000e
+    void publishConsole(const char* text, size_t len);     // 000d replies
 
     bool connected() const;
     // Opens a pairing window: allows new bonds for window_ms. Outside it, only bonded peers may write.
@@ -68,6 +73,9 @@ private:
     NimBLECharacteristic* ch_info_ = nullptr;
     NimBLECharacteristic* ch_warn_ = nullptr;
     NimBLECharacteristic* ch_timer_ = nullptr;
+    NimBLECharacteristic* ch_console_ = nullptr;
+    NimBLECharacteristic* ch_telem_ = nullptr;
+    void notifyText(NimBLECharacteristic* ch, const char* text, size_t len);
     bool pairing_open_ = false;
     uint32_t pairing_end_ms_ = 0;
     int bonds_at_connect_ = 0;

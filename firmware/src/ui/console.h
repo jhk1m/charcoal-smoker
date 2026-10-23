@@ -6,6 +6,10 @@
 // commands are applied directly with no queue. Input is polled non-blocking, one line at a time.
 #pragma once
 
+#include <Arduino.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+
 #include <cstdint>
 
 #include "control/fan_monitor.h"
@@ -25,14 +29,19 @@ struct ConsoleDeps {
     storage::SettingsStore* store;
     control::Thresholds (*makeThresholds)(const storage::Settings&);  // main.cpp owns the mapping
     void (*setCookActive)(bool);
+    void (*remoteOut)(const char*, size_t);  // console replies for a remote (BLE) line; nullptr = serial only
 };
 
 class Console {
 public:
     void begin(const ConsoleDeps& d);
 
-    // Call once per control tick; processes whatever complete lines have arrived.
+    // Call once per control tick; processes whatever complete lines have arrived (serial, then injected).
     void poll();
+
+    // Hand in a complete line from another task (BLE). Queued, run inside poll() on the control task; replies go
+    // to serial AND to remoteOut. Returns false (line dropped) when the queue of 4 is full.
+    bool inject(const char* line);
 
     bool csvEnabled() const { return csv_; }
 
@@ -44,6 +53,16 @@ public:
 
 private:
     void handleLine(char* line);
+    size_t emit(const uint8_t* b, size_t n);  // every console reply goes through here
+
+    // Print target for the console. Mirrors to Serial; while a remote line runs, also to remoteOut.
+    struct Out : public Print {
+        Console* c = nullptr;
+        size_t write(uint8_t b) override { return c->emit(&b, 1); }
+        size_t write(const uint8_t* b, size_t n) override { return c->emit(b, n); }
+    } mutable out_;  // help() and dump() are const
+    bool remote_ = false;
+    QueueHandle_t inject_q_ = nullptr;
     void help() const;
     void dump() const;
 

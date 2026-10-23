@@ -141,6 +141,8 @@ constexpr const char* UUID_EVENT_LOG   = "7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a0009";
 constexpr const char* UUID_DEVICE_INFO = "7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a000a";  // utf8 string, read
 constexpr const char* UUID_WARNINGS    = "7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a000b";  // uint8 bitmask (control::Warning), read/notify
 constexpr const char* UUID_TIMER       = "7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a000c";  // uint16 minutes, read/write enc; 0 clears. TIMER_DONE arrives on WARNINGS
+constexpr const char* UUID_CONSOLE     = "7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a000d";  // utf8 console line, write enc+authen; replies notified on the same char (2026-10-22)
+constexpr const char* UUID_TELEMETRY   = "7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a000e";  // utf8 CSV line, notify at 1 Hz, same columns as the serial stream
 constexpr uint32_t BLE_PASSKEY = 240813;  // OPEN: change before enclosure build; static passkey pairing
 constexpr uint32_t BLE_PAIRING_WINDOW_MS = 60 * 1000;
 
