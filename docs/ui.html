@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smoker</title>
+<style>
+  :root { --bg:#111; --fg:#eee; --dim:#888; --ok:#4c4; --warn:#fc3; --bad:#f44; --card:#1c1c1c; }
+  body { margin:0; padding:12px 16px; background:var(--bg); color:var(--fg); font:16px system-ui, sans-serif; }
+  button, input { font:inherit; padding:8px 12px; border-radius:6px; border:1px solid #444; background:#222; color:var(--fg); }
+  button:disabled { opacity:.4; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:8px; }
+  .card { background:var(--card); border-radius:8px; padding:10px 12px; }
+  .card .k { color:var(--dim); font-size:12px; text-transform:uppercase; }
+  .card .v { font-size:28px; font-weight:600; margin-top:2px; }
+  .card .v.small { font-size:18px; }
+  #state.ok { color:var(--ok); } #fault.bad, #warn.bad { color:var(--bad); } #warn.warn { color:var(--warn); }
+  canvas { width:100%; height:220px; background:var(--card); border-radius:8px; display:block; }
+  #log { background:var(--card); border-radius:8px; padding:8px; height:200px; overflow:auto; font:13px ui-monospace, monospace; white-space:pre-wrap; }
+  #cmd { flex:1; min-width:160px; font-family:ui-monospace, monospace; }
+  .dim { color:var(--dim); font-size:13px; }
+</style>
+</head>
+<body>
+<div class="row">
+  <button id="connect">Connect</button>
+  <span id="conn" class="dim">not connected</span>
+  <span id="info" class="dim"></span>
+</div>
+
+<div class="cards">
+  <div class="card"><div class="k">pit</div><div class="v" id="pit">--</div></div>
+  <div class="card"><div class="k">setpoint</div><div class="v" id="sp">--</div></div>
+  <div class="card"><div class="k">blower</div><div class="v" id="duty">--</div></div>
+  <div class="card"><div class="k">state</div><div class="v small" id="state">--</div></div>
+  <div class="card"><div class="k">fault</div><div class="v small" id="fault">--</div></div>
+  <div class="card"><div class="k">warnings</div><div class="v small" id="warn">--</div></div>
+  <div class="card"><div class="k">fan rpm</div><div class="v" id="rpm">--</div></div>
+  <div class="card"><div class="k">timer</div><div class="v" id="timer">--</div></div>
+</div>
+
+<div class="row">
+  <input id="spIn" type="number" min="60" max="200" step="1" value="110" style="width:90px"> <span class="dim">C</span>
+  <button id="setSp" disabled>Set</button>
+  <button id="start" disabled>Start cook</button>
+  <button id="stop" disabled>Stop</button>
+  <button id="clear" disabled>Clear fault</button>
+  <input id="tmIn" type="number" min="0" max="600" step="5" value="30" style="width:80px"> <span class="dim">min</span>
+  <button id="setTm" disabled>Timer</button>
+</div>
+
+<canvas id="chart" width="900" height="220"></canvas>
+<div class="row dim"><span>pit (white), setpoint (dashed), duty percent (green, right axis). Last 60 min.</span>
+  <button id="csv" disabled style="margin-left:auto">Download CSV</button></div>
+
+<div class="row">
+  <input id="cmd" placeholder="console: d  ?  s 110  c  x  k  m 10  t 25 ..." disabled>
+  <button id="send" disabled>Send</button>
+</div>
+<div id="log"></div>
+
+<script>
+// Web Bluetooth front end for SMOKER-CTRL. Mirrors firmware/README.md "BLE interface". Chrome on PC or Android;
+// bond first (Windows: tools/pair.py or the passkey prompt). file:// is a secure context in Chrome, so no server.
+const BASE = '7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a';
+const U = n => BASE + n.toString(16).padStart(4, '0');
+const SVC = U(1), PIT = U(2), SP = U(3), DUTY = U(4), STATE = U(5), FAULT = U(6), MODE = U(7),
+      INFO = U(0xa), WARN = U(0xb), TIMER = U(0xc), CONSOLE = U(0xd), TELEM = U(0xe);
+const STATES = ['IDLE','IGNITE','RAMP','HOLD','LID_OPEN','FAULT','MANUAL','RECOVERY'];
+const FAULTS = ['NONE','SENSOR_OPEN','SENSOR_SHORT','SENSOR_RANGE','IGNITE_TIMEOUT','PIT_OVER_LIMIT','WATCHDOG_RESET','FIRE_OUT','BLOWER_STALL','BLOWER_RUNAWAY'];
+const WARNS = ['PIT_HIGH','PIT_LOW','FUEL_LOW','CREEP','LID_RISING','TIMER_DONE'];
+const $ = id => document.getElementById(id);
+const dec = new TextDecoder(), enc = new TextEncoder();
+let ch = {}, dev = null, consoleBuf = '', telemBuf = '';
+const hist = [];   // {t, pit, sp, duty}
+const csvLines = ['t_s,state,fault,pit_raw_c,pit_filt_c,cj_c,duty_cmd,duty_applied,tc_fault_bits,warnings,out_ema,rate_c_s,fan_rpm'];
+let lastSp = NaN;
+
+function log(s) { const el = $('log'); el.textContent += s + '\n'; el.scrollTop = el.scrollHeight; }
+function enable(on) { for (const id of ['setSp','start','stop','clear','setTm','cmd','send','csv']) $(id).disabled = !on; }
+
+function showState(v) { $('state').textContent = STATES[v] ?? v; $('state').className = 'v small ' + (v === 5 ? 'bad' : v === 0 ? '' : 'ok'); }
+function showFault(v) { $('fault').textContent = FAULTS[v] ?? v; $('fault').className = 'v small ' + (v ? 'bad' : ''); }
+function showTimer(min) { $('timer').textContent = min ? min + ' min left' : 'off'; }
+function showWarn(m) {
+  const names = WARNS.filter((_, i) => m & (1 << i));
+  $('warn').textContent = names.length ? names.join(' ') : 'none';
+  $('warn').className = 'v small ' + (m & 0x04 ? 'bad' : m ? 'warn' : '');
+}
+
+function onTelem(e) {
+  telemBuf += dec.decode(e.target.value);
+  let i;
+  while ((i = telemBuf.indexOf('\n')) >= 0) {
+    const line = telemBuf.slice(0, i); telemBuf = telemBuf.slice(i + 1);
+    const f = line.split(',');
+    if (f.length < 13) continue;
+    csvLines.push(line);
+    const pit = +f[4], duty = +f[6];
+    $('pit').textContent = pit.toFixed(1) + ' C';
+    $('duty').textContent = f[6] + ' %';
+    $('rpm').textContent = f[12];
+    showState(STATES.indexOf(f[1])); showFault(FAULTS.indexOf(f[2])); showWarn(parseInt(f[9], 16));
+    hist.push({ t: Date.now(), pit, sp: lastSp, duty });
+    while (hist.length && Date.now() - hist[0].t > 3600e3) hist.shift();
+    draw();
+  }
+}
+function onConsole(e) {
+  consoleBuf += dec.decode(e.target.value);
+  let i;
+  while ((i = consoleBuf.indexOf('\n')) >= 0) { log(consoleBuf.slice(0, i)); consoleBuf = consoleBuf.slice(i + 1); }
+}
+
+function draw() {
+  const c = $('chart'), g = c.getContext('2d'), W = c.width, H = c.height, L = 36, R = 36, T = 8, B = 20;
+  g.clearRect(0, 0, W, H);
+  if (hist.length < 2) return;
+  const t0 = hist[0].t, t1 = hist[hist.length - 1].t, span = Math.max(t1 - t0, 60e3);
+  const temps = hist.flatMap(h => [h.pit, h.sp]).filter(Number.isFinite);
+  let lo = Math.min(...temps), hi = Math.max(...temps); const pad = Math.max(5, (hi - lo) * 0.1); lo -= pad; hi += pad;
+  const x = t => L + (t - t0) / span * (W - L - R), yT = v => T + (hi - v) / (hi - lo) * (H - T - B), yD = v => T + (100 - v) / 100 * (H - T - B);
+  g.strokeStyle = '#333'; g.fillStyle = '#888'; g.font = '11px sans-serif'; g.textAlign = 'right';
+  for (let k = 0; k <= 4; k++) { const v = lo + (hi - lo) * k / 4, y = yT(v); g.beginPath(); g.moveTo(L, y); g.lineTo(W - R, y); g.stroke(); g.fillText(v.toFixed(0), L - 4, y + 4); }
+  g.textAlign = 'left'; for (let k = 0; k <= 4; k++) g.fillText(k * 25, W - R + 4, yD(k * 25) + 4);
+  g.fillText(((t1 - t0) / 60e3).toFixed(0) + ' min', L, H - 4);
+  const line = (key, style, yf, dash) => { g.strokeStyle = style; g.setLineDash(dash || []); g.lineWidth = 1.5; g.beginPath(); let first = true;
+    for (const h of hist) { if (!Number.isFinite(h[key])) continue; const px = x(h.t), py = yf(h[key]); first ? g.moveTo(px, py) : g.lineTo(px, py); first = false; }
+    g.stroke(); g.setLineDash([]); };
+  line('duty', '#4c4', yD); line('sp', '#aaa', yT, [4, 4]); line('pit', '#fff', yT);
+}
+
+async function connect() {
+  try {
+    dev = await navigator.bluetooth.requestDevice({ filters: [{ name: 'SMOKER-CTRL' }], optionalServices: [SVC] });
+    dev.addEventListener('gattserverdisconnected', () => { $('conn').textContent = 'disconnected'; enable(false); $('connect').disabled = false; });
+    $('conn').textContent = 'connecting...'; $('connect').disabled = true;
+    const srv = await (await dev.gatt.connect()).getPrimaryService(SVC);
+    for (const [k, u] of Object.entries({ PIT, SP, DUTY, STATE, FAULT, MODE, INFO, WARN, TIMER, CONSOLE, TELEM })) ch[k] = await srv.getCharacteristic(u);
+    $('info').textContent = dec.decode(await ch.INFO.readValue());
+    lastSp = (await ch.SP.readValue()).getFloat32(0, true); $('sp').textContent = lastSp.toFixed(0) + ' C'; $('spIn').value = lastSp.toFixed(0);
+    showState((await ch.STATE.readValue()).getUint8(0)); showFault((await ch.FAULT.readValue()).getUint8(0)); showWarn((await ch.WARN.readValue()).getUint8(0));
+    showTimer((await ch.TIMER.readValue()).getUint16(0, true));
+    ch.TIMER.addEventListener('characteristicvaluechanged', e => showTimer(e.target.value.getUint16(0, true)));
+    ch.SP.addEventListener('characteristicvaluechanged', e => { lastSp = e.target.value.getFloat32(0, true); $('sp').textContent = lastSp.toFixed(0) + ' C'; });
+    ch.WARN.addEventListener('characteristicvaluechanged', e => showWarn(e.target.value.getUint8(0)));
+    ch.TELEM.addEventListener('characteristicvaluechanged', onTelem);
+    ch.CONSOLE.addEventListener('characteristicvaluechanged', onConsole);
+    for (const k of ['SP', 'WARN', 'TIMER', 'TELEM', 'CONSOLE']) await ch[k].startNotifications();
+    $('conn').textContent = 'connected'; enable(true); log('# connected');
+  } catch (err) { log('! ' + err.message); $('conn').textContent = 'failed'; $('connect').disabled = false; }
+}
+
+// Writes need the bonded, encrypted link; the browser raises the pairing prompt on the first one if not bonded.
+// Bluefy (iOS) and older Chrome only have writeValue; newer Chrome has writeValueWithResponse.
+const w = (k, buf) => {
+  log('> ' + k + ' ' + Array.from(new Uint8Array(buf instanceof ArrayBuffer ? buf : buf.buffer)).join(' '));
+  try {
+    return (ch[k].writeValueWithResponse ? ch[k].writeValueWithResponse(buf) : ch[k].writeValue(buf))
+      .catch(err => log('! ' + k + ' write failed: ' + (err && err.message || err)));
+  } catch (err) { log('! ' + k + ' write threw: ' + (err && err.message || err)); }
+};
+const u8 = v => Uint8Array.of(v);
+$('connect').onclick = connect;
+$('setSp').onclick = () => { const b = new DataView(new ArrayBuffer(4)); b.setFloat32(0, +$('spIn').value, true); w('SP', b.buffer); };
+$('start').onclick = () => w('MODE', u8(0));
+$('stop').onclick = () => w('MODE', u8(2));
+$('clear').onclick = () => w('MODE', u8(3));
+// Timer goes through the console channel (`a <min>`): the native 000c write never left Bluefy on iOS (2026-10-23)
+// while console writes did. The card still updates from the 000c notify.
+$('setTm').onclick = () => w('CONSOLE', enc.encode('a ' + Math.max(0, Math.round(+$('tmIn').value || 0))));
+const send = () => { const s = $('cmd').value.trim(); if (!s) return; w('CONSOLE', enc.encode(s)); $('cmd').value = ''; };
+$('send').onclick = send; $('cmd').onkeydown = e => { if (e.key === 'Enter') send(); };
+$('csv').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csvLines.join('\n') + '\n'], { type: 'text/csv' }));
+  a.download = 'smoker-' + new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16) + '.csv'; a.click(); };
+if (!navigator.bluetooth) { log('! Web Bluetooth not available: use Chrome or Edge on Windows, Android or macOS. iOS needs the Bluefy browser.'); $('connect').disabled = true; }
+</script>
+</body>
+</html>
