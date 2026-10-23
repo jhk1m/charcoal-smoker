@@ -1,6 +1,7 @@
 # Phase 1.5 / Phase 2 - Second Purchase List
 
 Created: 2026-09-21
+Updated: 2026-10-22 (A14 thermal fuse added)
 Scope: everything doc 06 proposes that is not in doc 03. Nothing below is needed for bench steps 1 to 5 (boards arrive 2026-09-23); all of it is for the first real cook and after.
 Prices: VERIFIED means fetched from the vendor page on 2026-09-21. "price NV" means not verified; spec is what matters.
 Blocked items: marked WAIT, they depend on measurements not yet taken (duct inlet ID, current nozzle OD, exhaust stack OD, whether the stack has a damper, fire door seal).
@@ -24,6 +25,7 @@ Blocked items: marked WAIT, they depend on measurements not yet taken (duct inle
 | A10 | Exhaust damper | Stove-pipe style butterfly damper matching the stack OD, or a slide cap | 1 | price NV | WAIT: stack OD and whether one exists |
 | A11 | Pit probe reach | EGT probe RECEIVED 2026-10-02; tested 2026-10-04: ungrounded but inaccurate (3.5 C high in ice, 4 to 5 C low at 88.9 C), kept for the first tests with a +6.5 C offset, replacement to be bought (doc 03, doc 05). 2026-10-03: it enters through a second 1/8 NPT hole tapped in the existing port block beside the thermostat bulb (doc 09 M6); 3.2 in reaches roughly 7 cm inboard, short of the 8 cm target, accepted for the first tests. If the 1/8 NPT EGT probe is too short to reach 8 cm inboard at grate height, Procon B09HSJ4PBB 5 x 80 mm (doc 03 fallback) | 1 | $19.99 (doc 03) | Decide after the probe port is measured |
 | A13 | Breadboard and jumpers | 830-point solderless breadboard plus male-male and male-female Dupont jumpers. Doc 03 listed one as on hand; the one that exists is too short for the S3 by two pins, see doc 03 item 14. The S3 needs 22 rows of terminal strip and an 830-point board has 63 | 2 | 854-BB830 at $8.95 plus $3.40 tariff each, ORDERED 2026-09-25 | DONE, breadboards ON HAND (Jason, 2026-09-25 evening) |
+| A14 | Second hard cutoff DECIDED 2026-10-22 (Jason) | Thermodisc MICROTEMP G4 one-shot thermal fuse, 10 A 250 VAC, the highest rating in the series (257 C functioning temperature per the element14 listing; exact part number and the spec-sheet trip tolerance to be confirmed with the distributor before ordering, none invented here). In series in the fan supply with the dial thermostat, clamped to the drum wall near the probe port. Wall temperature at that spot is NOT the pit air temperature: measure it at the first fire (doc 09 M10) before trusting the trip point | 2 | price NV | Buy after M10 confirms the wall runs well under 257 C at a 200 C pit |
 | A12 | Kitchen or luggage scale | For weighing the charcoal basket before and after cooks (fuel gauge calibration, doc 06 section 1b) | 1 | on hand? | Confirm |
 
 ## B. Cook Manager (Phase 2, meat probes)

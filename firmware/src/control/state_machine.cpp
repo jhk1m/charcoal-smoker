@@ -113,6 +113,7 @@ void StateMachine::startCook(float setpoint_c) {
 
 void StateMachine::stop() {
     if (state_ == State::FAULT) return;
+    setTimer(0);
     Sample none{last_pit_c_, true, Fault::NONE, 0.0f};
     transition(State::IDLE, none);
 }
@@ -286,6 +287,7 @@ void StateMachine::updateWarnings(const Sample& s, uint8_t duty) {
     if (fuel_low_) w |= Warning::FUEL_LOW;
     if (creep_accum_s_ >= static_cast<float>(t_.creep_s)) w |= Warning::CREEP;
     if (state_ == State::LID_OPEN && lid_rising_variant_) w |= Warning::LID_RISING;
+    if (timer_done_) w |= Warning::TIMER_DONE;
     warnings_ = w;
 }
 
@@ -304,6 +306,10 @@ float StateMachine::closedLoopDuty(const Sample& s) {
 
 Command StateMachine::tick(const Sample& s) {
     state_elapsed_s_ += s.dt_s;
+    if (timer_s_ > 0.0f) {
+        timer_s_ -= s.dt_s;
+        if (timer_s_ <= 0.0f) { timer_s_ = 0.0f; timer_done_ = true; }
+    }
     if (s.sensor_ok) {
         updateRate(s);
         updateFuelHistory(s);
@@ -314,7 +320,7 @@ Command StateMachine::tick(const Sample& s) {
         if (!s.sensor_ok) {
             fault_ = s.sensor_fault == Fault::NONE ? Fault::SENSOR_RANGE : s.sensor_fault;
             transition(State::FAULT, s);
-        } else if (s.pit_c >= t_.pit_soft_limit_c) {
+        } else if (s.pit_c >= overLimitC()) {
             fault_ = Fault::PIT_OVER_LIMIT;
             transition(State::FAULT, s);
         }

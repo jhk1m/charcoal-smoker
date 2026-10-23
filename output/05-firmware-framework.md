@@ -45,7 +45,7 @@ APIs verified against primary sources before use: ledcAttach/ledcWrite/ledcChang
 - BLOWER_PWM_FREQ_HZ (25 kHz placeholder), BLOWER_MIN_START_DUTY_PCT (30 placeholder): bench step 2.
 - PID_KP/KI/KD_DEFAULT: after step-response cook (step 6). Note: HeaterMeter defaults are per F; ours are per C and softer.
 - BLE_PASSKEY 240813: bench value, change before enclosure build.
-- PIT_SOFT_LIMIT_C 200: confirm below thermostat dial setting.
+- PIT_SOFT_LIMIT_C 240 since 2026-10-22 (absolute cap; the live limit is setpoint + PIT_OVER_MARGIN_C 40): dial to be fixed at 270 C, M4 proves the trip.
 - New Phase 1.5 thresholds (lid rate, FUEL_LOW, FIRE_OUT, CREEP, caps) are design values from doc 06; tune against logged cooks.
 
 ## Phase 1.5 changes (2026-09-21, implemented from doc 06 section 7; built and tested in a clean container, written back to JASON-PC)
@@ -298,7 +298,19 @@ Three builds flashed in turn; everything below is on the last one unless marked.
 5. Sim plant moved to the measured Delta: `fan_cfm_max` 15.3 (datasheet free air), `fan_stall_pct` 7, `fan_start_pct` 10 (were 10, 22, 28, generic guesses). Sim metrics changed accordingly (doc 08). Sim's `SimBlower` takes min-run and min-on from config.h too; it has no supply model, so Fix B does not apply there.
 6. Regression on the final build, tach faults on: console `i` PASS (board 1, delta -0.17 C); simulated-probe cook IGNITE at 50 to RAMP at 93 C (2847 RPM at 50 percent), HOLD after the settle window at a frozen 110 C, LID_OPEN on a -0.6 C/s drop (blower 0, supply cut), RECOVERY, `t 200` PIT_OVER_LIMIT with the supply cut, `k` clears. No BLOWER_STALL or BLOWER_RUNAWAY in about 20 minutes of fan running across the runs.
 7. Checks: unit tests 41 Tests 0 Failures under WSL2 (g++ 13.3.0, compiled directly, -Wall -Wextra clean). pio run SUCCESS on all five envs, no warnings: s3-n8r8-uart RAM 38440 B, Flash 658150 B (19.7 percent); s3-n8r8 650770 B; s3-n8r8-uart-max31855 656070 B; freenove-wrover 688399 B; wroom32 688287 B. Sim scenarios and `--sweep` re-run; the sim's plot.py did not run (no matplotlib in WSL2 or in the Windows Python; PNGs in sim/out are still the 2026-09-21 set).
-8. Owed: BLOWER_STALL with the supply-cut model has NOT been re-proven by pulling YELLOW (wiring step; the logic holds because the monitor judges the previous tick before the new command, so 5 driven ticks without pulses fault at the end of a 5 s on-phase). Kick length on a scope. Bench left: sensor live, fan on 12 V, IDLE, `n 15`, `X 60`, `o 6.5`, flashed build = this one.
+8. DONE later the same day, see "Short cooks build" item 6. Was: BLOWER_STALL with the supply-cut model has NOT been re-proven by pulling YELLOW (wiring step; the logic holds because the monitor judges the previous tick before the new command, so 5 driven ticks without pulses fault at the end of a 5 s on-phase). Kick length on a scope. Bench left: sensor live, fan on 12 V, IDLE, `n 15`, `X 60`, `o 6.5`, flashed build = this one.
+
+## Short cooks build 2026-10-22 (doc 06 section 6a, Jason confirmed the numbers)
+1. `SETPOINT_MAX_C` 180 to 200. `PIT_SOFT_LIMIT_C` 200 to 240 and is now the absolute cap; new `PIT_OVER_MARGIN_C` 40; `StateMachine::overLimitC()` = min(setpoint + margin, cap) replaces the fixed compare in `tick()`. At setpoint 110 the fault line is 150 (was 200), at 200 it is 240. `d` prints `limit=`.
+2. Cook timer: `StateMachine::setTimer(seconds)`, counts down in `tick()` in any state, raises `Warning::TIMER_DONE` (0x20) at zero and holds it until the timer is set again or `stop()`. Console `a <min>` (`a 0` clears), BLE characteristic `000c` (uint16 minutes, write enc, read). The warning reaches the phone on `000b` as before. Not saved to NVS; a reboot forgets it.
+3. Manual mode with a timer set aside (doc 09 N9). Hard cutoff: thermostat dial to 270 C, proven in M4 (doc 06 section 6a).
+4. Checks: 42 Tests 0 Failures under WSL2 (new `test_sm_timer_warns_at_zero_and_clears_on_stop`; `test_sm_over_limit_faults` now covers the margin and the cap); sim nominal unchanged (reach 37 min, overshoot 3.4, HOLD rms 0.51, duty 19.8); pio run SUCCESS on all five envs, no warnings (s3-n8r8-uart RAM 38464 B, Flash 658806 B; s3-n8r8 651422; s3-n8r8-uart-max31855 656718; freenove-wrover 689123; wroom32 689011).
+5. Bench, COM6, flashed and proven with the simulated probe, tach faults on: `d` prints `limit=150 C` at setpoint 110 and `limit=240 C` at 200; cook at 110 with `t 149` stays RAMP (PIT_HIGH only), `t 150` faults PIT_OVER_LIMIT at once, supply cut, `k` clears; `a 1` shows `timer=58 s` two ticks later, warnings 0x20 after 60 s in IDLE, `a 0` clears it. Board left IDLE, setpoint 110, `t off`.
+6. BLOWER_STALL re-proven under the supply-cut model, same session, three pulls by Jason (ask-first wiring, nothing else moved):
+   - `m 10` (steady 10 percent, 480 RPM, min-run pass-through so no long-PWM): BLACK pulled by mistake. Fan unpowered, rpm 480, 210, 0, five driven seconds with no pulses, BLOWER_STALL, duty 0, supply cut. Counts as the dead-fan case.
+   - `m 10` again, YELLOW pulled from the tach row (fan kept spinning): rpm 450, 182, 0, five driven seconds, BLOWER_STALL at the sixth tick, supply cut stopped the fan about 5 s after the pull (Jason heard it). Lost-tach case.
+   - `m 5` (long-PWM: 60 kick, four ticks at 15, ten ticks at 0 with the supply cut, 15 s period as designed; 1588, 1169, 869, 839, 809 RPM on every on-phase): YELLOW pulled and left out; the next on-phase ran its five driven ticks with rpm 0 and BLOWER_STALL latched at the end of that on-phase. Driven seconds across the long-PWM gap are counted as intended.
+   `k` cleared each fault. Doc 09 N7 and section 6a: stall detection fully proven on hardware, nothing owed there except the kick on a scope.
 
 ## Next
 1. DONE 2026-09-25: pio run on JASON-PC confirmed (above). pio test -e native is blocked locally, see above. 2026-10-04: the tests run under WSL2 with g++ directly (section above).

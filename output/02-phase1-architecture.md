@@ -1,7 +1,7 @@
 # Charcoal Smoker - Phase 1 Architecture (ESP32-S3 + PWM + BLE)
 
 Created: 2026-09-20
-Updated: 2026-09-25 (blower DECIDED as the Delta BFB0712HH-AWPH 4-wire; duct measured; firmware validated on hardware)
+Updated: 2026-10-22 (dynamic software over-temp and cook timer for short cooks, doc 06 section 6a; second hard cutoff decided, doc 07 A14). Earlier: 2026-09-25 (blower DECIDED as the Delta BFB0712HH-AWPH 4-wire; duct measured; firmware validated on hardware)
 Status: Sections 1 to 9 are current. Decisions marked DECIDED are fixed; OPEN items need a measurement or a choice before build.
 Platform: stainless drum smoker, no PSU / lights / motor. Only loads: blower + controller.
 
@@ -34,11 +34,11 @@ Hardware, no software in the loop:
 1. Thermostat contact in series with the fan supply. Opens above dial setpoint, re-closes 5 to 15 C below (10 +/- 5 C differential). OPEN: identify the pair closed at room temperature and confirm the trip point.
 2. Input fuse at the adapter rating; 1 A fuse on the fan branch.
 3. MOSFET gate pull-downs so the fan is unpowered while the ESP32 is in reset, booting or unpowered.
-4. Optional for unattended cooks: a fixed-temperature bimetal switch or thermal fuse on the drum wall.
+4. DECIDED 2026-10-22 (Jason): Thermodisc MICROTEMP G4 one-shot thermal fuse (257 C rating) on the drum wall, in series with the thermostat in the fan supply; wall temperature measured first (doc 09 M10), part in doc 07 A14. The dial thermostat is to be fixed at 270 C (doc 09 M4).
 
 Software on top, all implemented and unit-tested:
 - max duty clamp (default 60 percent) and a startup cap (50 percent) until the setpoint is first reached;
-- sensor fault, watchdog reset, and pit over software limit (200 C) all force the blower OFF;
+- sensor fault, watchdog reset, and pit over software limit all force the blower OFF. Since 2026-10-22 the limit is dynamic: setpoint + 40 C, capped at 240 C (doc 06 section 6a); it was a fixed 200 C before;
 - FIRE_OUT fault; FUEL_LOW, CREEP and pit-deviation warnings;
 - VALIDATED ON HARDWARE 2026-09-25: the over-temp path fired at 200 C and latched, and startCook is refused until the fault is cleared.
 
@@ -68,7 +68,7 @@ Secondary (Phase 2): two ThermoWorks Pro-Series thermistor probes on an ADS1115.
 - RAMP and RECOVERY: PID with duty and integral capped at 50 percent until the setpoint is first reached.
 - HOLD: PID up to the 60 percent max duty.
 - LID_OPEN: rate trigger (0.3 C/s at cook setpoints, scaled to 1.2 C/s at 260 C) with a fire-out guard, plus a drum-specific rising-lid variant; blower to 0; 30 s minimum; exit on setpoint, plateau or 240 s timeout, into RECOVERY.
-- Warnings (never touch the blower): PIT_HIGH, PIT_LOW, FUEL_LOW, CREEP, LID_RISING.
+- Warnings (never touch the blower): PIT_HIGH, PIT_LOW, FUEL_LOW, CREEP, LID_RISING, TIMER_DONE (cook timer, 2026-10-22).
 - VALIDATED ON HARDWARE 2026-09-25 with the simulated probe: IGNITE -> RAMP -> HOLD -> LID_OPEN with the correct timings (doc 05).
 - Tuning: gains are still placeholders. Derive them from a step-response cook.
 

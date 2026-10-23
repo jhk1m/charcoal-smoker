@@ -202,7 +202,7 @@ Each row: what happens, evidence, what we do. FW = firmware change; HW = hardwar
 | E19 | Lump vs briquette; minion vs snake with a fan | TVWBB minion thread | PROC: minion with very little starter coal; aim air under basket centre. Lump: less ash, sparks (NOT VERIFIED). | PROC |
 | E20 | Water pan present vs absent changes plant dynamics | amazingribs water pan; Gateway FAQ | Two PID gain sets in NVS (pan / no pan), selectable over BLE | FW |
 | E21 | Setpoint changed mid-cook | HeaterMeter: setpoint change re-enters STARTUP | Setpoint change -> RAMP with startup cap (down-steps: duty 0 until within band, then PID) | FW |
-| E22 | Software over-temp vs thermostat dial ordering | Doc 02 section 3 | PIT_SOFT_LIMIT_C 200 must be below the dial; SETPOINT_MAX 180 C. Verify dial reads >= 220 C at bring-up step 4 | PROC |
+| E22 | Software over-temp vs thermostat dial ordering | Doc 02 section 3 | PIT_SOFT_LIMIT_C 200 must be below the dial; SETPOINT_MAX 180 C. Verify dial reads >= 220 C at bring-up step 4. 2026-10-22: being replaced by a dynamic limit capped at 240 with the dial at 270, section 6a | PROC |
 | E23 | BLE client disconnects / phone dies | n/a | Controller is autonomous; alarms buzz locally (Phase 2 buzzer, deferred); event log survives in RAM and later flash | FW (Phase 2) |
 | E24 | Thin drum wall: fast swings, weather sensitivity | Inference from steel-thickness comparison; not sourced | Lower P, higher D relative to HeaterMeter defaults; log and tune; water pan | FW + PROC |
 | E25 | Lit-mass creep: forced air under the basket lights the whole bed, fan-off floor temperature rises over the cook until setpoint cannot be held with duty 0 | Section 1b item 1 (inference from TVWBB minion thread and PBC fan practice) | Duty caps (P3), flap (P2), log duty trend; alarm "pit above setpoint with fan off, close exhaust or remove coal" if pit > setpoint + 14 C for 15 min at duty 0 | FW + PROC |
@@ -316,6 +316,30 @@ Only shown when: state is RISING or WRAPPED, fit valid, meat has risen >= 9 C fr
 - New config.h constants: profile table, STALL thresholds, DANGER_ZONE hours, hold floor, FSIS lethality table.
 - New BLE characteristics (encrypted writes): MEAT_TEMP[2] (notify), MEAT_PROFILE (rw), MEAT_STATE (notify), COOK_EVENT (write: WRAPPED/UNWRAPPED/TENDER_YES/TENDER_NO/REMOVED/SERVE), ETA (notify), ALARM (notify, bitmask). UUIDs ...000b to ...0011.
 - Unit tests: stall entry/exit on synthetic curves, wrap detection, ramp-down never below hold, poultry lethality integration, danger-zone timer, unwrapped drop not flagged.
+
+## 6a. Short cooks (DECIDED 2026-10-22, Jason confirmed the numbers; firmware side BUILT the same day, doc 05 "Short cooks build")
+
+Scope (Jason, 2026-10-22): sear is dropped; short direct cooks of 20 to 60 min (pork belly, chicken, wings) stay. Manual mode (constant duty plus a timer) is set aside, see doc 09 N9.
+
+What the sources say about pit temperature for this class of cook:
+- Drum makers run 135 to 155 C (275 to 310 F) as the normal "fast and hot" range (Pit Barrel Cooker blog); Ace lists 275 to 325 F for the same drum.
+- Chicken skin: 175 to 190 C (350 to 375 F) on a WSM gave bite-through skin in about 50 min; a forum cook does half birds at 205 to 220 C (400 to 425 F) and warns not to exceed 230 C (450 F) dome.
+- Pork belly hot and fast: 140 to 175 C (grillfuerst guide); crisp-skin finishes quoted at 205 to 230 C but every smoker source says the skin crisps properly only over direct heat. That is the sear case, dropped.
+- Drum behaviour: startup spikes to about 200 C and lid-open raises the pit (section 1 item 7), so the over-limit must sit well above the highest short-cook setpoint, not 20 C above it as today (SETPOINT_MAX 180, PIT_SOFT_LIMIT 200).
+- Doneness is by internal temperature in every source, not time. A short cook is still a pit setpoint cook; the timer is a reminder, the meat probe (N1) is the real end condition.
+
+Proposal:
+| Item | Today | Proposed | Why |
+|---|---|---|---|
+| SETPOINT_MAX_C | 180 | 200 | Covers 275 to 390 F, the whole hot-and-fast range the sources use without direct heat. 400 F+ is sear territory |
+| PIT over-limit | fixed PIT_SOFT_LIMIT_C 200 | dynamic: setpoint + PIT_OVER_MARGIN_C 40, capped at PIT_ABS_LIMIT_C 240 | 40 C margin clears the drum startup spike and lid-open rise at any setpoint; at setpoint 110 the limit is 150 (today 200), at 200 it is 240. The absolute cap keeps the software limit under the hard cutoff |
+| Hard cutoff | dial thermostat in series, dial 50 to 320 C, trip never measured (M4) | keep it: set the dial to 270 C and prove the trip before the dial is removed (M4), then it is fixed. Second one-shot device DECIDED 2026-10-22 (Jason): Thermodisc MICROTEMP G4 one-shot thermal fuse, series tops out at 257 C, in the fan supply (doc 07 A14; wall temperature M10 first). No bimetal manual-reset switch above 150 C max surfaced in the search | Order must stay: software 240 < thermostat 270 < anything the drum or probe cannot take. 257 C fuse on the drum wall: wall temperature at the port is not the pit air temperature, measure at first fire before trusting it (new M row) |
+| Cook timer | none | countdown, minutes, set over console and BLE, alarm at zero (buzzer N3 when it exists, BLE notify now). Does not change the setpoint | Short cooks are timed in every recipe; the meat probe is the Phase 2 end condition |
+| Manual mode | `m` console duty only | deferred, N9 | Constant duty plus timer; nothing in the sources needs it for a short cook |
+
+Gains: none of the sources suggest short cooks need different PID gains; the drum and blower are the same plant. Verify on the first 175 C cook.
+
+Sources (web, 2026-10-22, not re-fetched): pitbarrelcooker.com blog "fast and hot vs low and slow" and "Signature Chicken"; tips.acehardware.com PBC overview; tvwbb.com threads 74686 (hot and fast chicken) and 91321 (leg quarters); grillfuerst.de "hot und fast bbq"; smokingmeatforums.com thread 308808 (crisping belly skin); element14 Thermodisc G4/G5 listings; uk.rs-online.com thermostatic switches 1117178, 2228248.
 
 ## 7. Concrete deltas to the current Phase 1 firmware (IMPLEMENTED 2026-09-21, see 05-firmware-framework.md section "Phase 1.5 changes"; the text below is the spec as written before implementation)
 

@@ -89,7 +89,8 @@ Control behaviour (revised 2026-09-21 per design doc 06 section 7, patterns take
 - LID_OPEN triggers on a fall rate of 0.3 C/s over 10 s at cook setpoints (scaled up to 1.2 C/s at 260 C), only after the setpoint has been reached and only while the output EMA is under 90 percent of max (a pegged blower with a falling pit is fuel running out, not a lid). Blower goes to 0. Exit after at least 30 s when the pit is back at the setpoint, or has climbed 11 C off its low and plateaued, or after 240 s; exit goes to RECOVERY. A drum-specific rising variant triggers when the pit climbs 0.3 C/s for 20 s with the blower at or under 10 percent (opening a drum lid raises the pit).
 - Warnings characteristic (bitmask, never touches the blower): PIT_HIGH / PIT_LOW (+/- 14 C with 1 C hysteresis, armed after the setpoint is reached, muted in LID_OPEN), FUEL_LOW (output EMA >= 90 percent and pit fell 5 C over 10 min), CREEP (pit 14 C over setpoint with the blower off for 15 min: draft leak or too much lit fuel), LID_RISING.
 - FIRE_OUT fault: pit 40 C or more below setpoint with the blower pegged for 15 min. Blower off; there is nothing to reignite.
-- Blower duties below the min-start duty are produced by long-period PWM (10 s period at min-start) instead of being clamped up; a 300 ms kick still breaks stiction on every start from OFF.
+- Blower duties below the min-start duty are produced by long-period PWM (10 s period at min-start, stretched so every on-phase is at least 5 s) instead of being clamped up; the off-phase cuts the fan supply, so every on-phase is a cold start with the 300 ms kick. A spinning fan passes through down to the min-run duty (10 percent) before long-PWM takes over.
+- Software over-temp (PIT_OVER_LIMIT) is dynamic: setpoint + 40 C, capped at 240 C. Cook timer: `a <min>` or BLE `000c`, TIMER_DONE warning at zero.
 - 4-wire fan (2026-10-04): the PWM GPIO drives a 2N7000 on the fan's PWM lead, so the GPIO duty is inverted. `FAN_SUPPLY_EN` is low (fan unpowered) in IDLE and FAULT and high in every other state; at duty 0 the fan stays powered and is held stopped through the PWM lead. The tach is counted on a PCNT unit each tick. BLOWER_STALL fault: driven above 0 percent with no tach pulses for 3 driven seconds. BLOWER_RUNAWAY fault: RPM above the commanded share of 4400 plus 1100 for 5 s (a broken PWM lead runs this fan at full speed). Both latch FAULT, which cuts the fan supply. Thresholds are in `config.h` and are not bench-checked.
 - Setpoint change in a closed-loop state re-enters RAMP with the startup cap (integral kept, clamped).
 - Power loss: `cook_active` is persisted in NVS when a cook starts and cleared on stop, manual, or fault. A boot with it set restarts the cook through IGNITE (which exits at once if the pit is still hot) and logs `POWER_RESUME`.
@@ -114,6 +115,7 @@ without a reflash, and so the state machine can be exercised with nothing wired 
 | `X <pct>` | blower maximum duty, rebuilds the state machine thresholds, saved to NVS |
 | `o <C>` | pit probe offset from the ice / boiling check, saved to NVS |
 | `l <0/1>` | lid detection on or off |
+| `a <min>` | cook timer in minutes; TIMER_DONE warning (0x20) at zero; `a 0` clears. Not saved |
 | `i` | sensor identity check (doc 09 section 2a): re-probes the chip, on the MAX31856 writes type J, reads it back, restores K; prints tc, cold junction, delta and fault bits. Run once with the probe open (expect OPEN), once with T+ shorted to T- (expect delta within 2 C) |
 | `t <C> [C/s]` | simulate the probe at C, optionally ramping; `t off` returns to the real sensor |
 
@@ -136,7 +138,8 @@ Device name `SMOKER-CTRL`. Service `7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a0001`. Littl
 | `0008` | uint8 | write(enc+authen) | manual duty percent (only in MANUAL) |
 | `0009` | 12 bytes | read(enc) | pops one event record per read; zero-length when empty |
 | `000a` | utf8 | read | device info string |
-| `000b` | uint8 | read, notify | warnings bitmask: bit0 PIT_HIGH, bit1 PIT_LOW, bit2 FUEL_LOW, bit3 CREEP, bit4 LID_RISING |
+| `000b` | uint8 | read, notify | warnings bitmask: bit0 PIT_HIGH, bit1 PIT_LOW, bit2 FUEL_LOW, bit3 CREEP, bit4 LID_RISING, bit5 TIMER_DONE |
+| `000c` | uint16 | read, write (enc) | cook timer in minutes; 0 clears. TIMER_DONE on `000b` when it reaches zero, latched until the timer is set again or the cook stops |
 
 Security: bonding + MITM + LE Secure Connections, static passkey `cfg::BLE_PASSKEY` (change before enclosure build). New bonds are accepted only during the pairing window (60 s after boot in Phase 1; button-triggered later). Bonds created outside the window are deleted and the link dropped.
 
@@ -150,7 +153,7 @@ Serial CSV header: `t_s,state,fault,pit_raw_c,pit_filt_c,cj_c,duty_cmd,duty_appl
 - `FAN_RUNAWAY_MARGIN_PCT` 25: assumes fan speed roughly linear in duty; check against measured RPM.
 - `PID_K*_DEFAULT`: placeholders until step-response data exists.
 - `BLE_PASSKEY`: bench value.
-- `PIT_SOFT_LIMIT_C` 200: must stay below the thermostat dial setting.
+- `PIT_SOFT_LIMIT_C` 240 (absolute cap of the dynamic over-limit, setpoint + `PIT_OVER_MARGIN_C` 40): must stay below the thermostat dial, fixed at 270 C once M4 proves the trip.
 
 ## Not in Phase 1
 

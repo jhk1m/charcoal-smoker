@@ -29,6 +29,7 @@ struct Handlers {
     std::function<void(float)> on_setpoint;             // validated setpoint in C
     std::function<void(uint8_t)> on_mode;               // 0 = auto (start/continue cook), 1 = manual, 2 = stop/idle, 3 = clear fault
     std::function<void(uint8_t)> on_manual_duty;        // percent
+    std::function<void(uint16_t)> on_timer;             // cook timer, minutes; 0 clears
     std::function<bool(evlog::Event&)> on_log_pop;      // pop oldest event for chunked read; false if empty
 };
 
@@ -66,6 +67,7 @@ private:
     NimBLECharacteristic* ch_log_ = nullptr;
     NimBLECharacteristic* ch_info_ = nullptr;
     NimBLECharacteristic* ch_warn_ = nullptr;
+    NimBLECharacteristic* ch_timer_ = nullptr;
     bool pairing_open_ = false;
     uint32_t pairing_end_ms_ = 0;
     int bonds_at_connect_ = 0;

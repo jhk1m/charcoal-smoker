@@ -45,7 +45,7 @@ void Console::help() const {
     Serial.println("#   g <kp> <ki> <kd>                     PID gains, saved to NVS");
     Serial.println("#   f <hz>       blower PWM frequency    n <pct>  blower min start duty");
     Serial.println("#   X <pct>      blower max duty         o <C>    probe offset (ice/boiling check)");
-    Serial.println("#   l <0|1>      lid detection on/off");
+    Serial.println("#   l <0|1>      lid detection on/off    a <min>  cook timer, TIMER_DONE warning at zero; a 0 clears");
     Serial.println("#   p <n>        fan tach pulses per revolution, saved to NVS");
     Serial.println("#   T <0|1>      fan tach faults off/on. NOT saved: on again at every boot. T 0 = bench with no fan");
     Serial.println("#   i            sensor identity check: run once with the probe open, once with T+ shorted to T-");
@@ -62,10 +62,11 @@ void Console::dump() const {
     Serial.printf("# setpoint=%.1f C gains kp=%.3f ki=%.4f kd=%.2f lid_detect=%d cook_active=%d\n",
                   static_cast<double>(s.setpoint_c), static_cast<double>(s.gains.kp), static_cast<double>(s.gains.ki),
                   static_cast<double>(s.gains.kd), s.lid_detect ? 1 : 0, s.cook_active ? 1 : 0);
-    Serial.printf("# state=%s fault=%s warnings=0x%02x duty=%u%% applied=%u%% out_ema=%.1f sim=%d %.1f C\n",
+    Serial.printf("# state=%s fault=%s warnings=0x%02x duty=%u%% applied=%u%% out_ema=%.1f sim=%d %.1f C limit=%.0f C timer=%lu s\n",
                   control::toString(d_.sm->state()), control::toString(d_.sm->fault()), d_.sm->warnings(),
                   d_.blower->commandedPercent(), d_.blower->appliedPercent(),
-                  static_cast<double>(d_.sm->outputEma()), sim_ ? 1 : 0, static_cast<double>(sim_c_));
+                  static_cast<double>(d_.sm->outputEma()), sim_ ? 1 : 0, static_cast<double>(sim_c_),
+                  static_cast<double>(d_.sm->overLimitC()), static_cast<unsigned long>(d_.sm->timerS()));
     if (cfg::BLOWER_4WIRE) {
         Serial.printf("# fan=4-wire tach_pin=%d supply_en_pin=%d supply=%d ppr=%u rpm=%.0f tach_faults=%d\n",
                       pins::FAN_TACH, pins::FAN_SUPPLY_EN, d_.blower->supplyOn() ? 1 : 0, d_.fan->pulsesPerRev(),
@@ -107,6 +108,10 @@ void Console::handleLine(char* line) {
             Serial.printf("# setpoint %.1f C\n", static_cast<double>(c));
             return;
         }
+        case 'a':
+            d_.sm->setTimer(static_cast<uint32_t>(std::max(v1, 0.0f)) * 60u);
+            Serial.printf("# timer %lu s\n", static_cast<unsigned long>(d_.sm->timerS()));
+            return;
         case 'c':
             if (d_.sm->state() == control::State::FAULT) {
                 Serial.printf("# refused: in FAULT (%s). Type k to clear it first.\n",

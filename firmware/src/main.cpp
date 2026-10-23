@@ -29,7 +29,7 @@
 namespace {
 
 // ---------------------------------------------------------------- command queue (BLE -> control task)
-enum class CmdType : uint8_t { SETPOINT, MODE, MANUAL_DUTY };
+enum class CmdType : uint8_t { SETPOINT, MODE, MANUAL_DUTY, TIMER };
 struct Cmd {
     CmdType type;
     float f;
@@ -87,6 +87,7 @@ control::Thresholds makeThresholds(const storage::Settings& s) {
     t.pit_alarm_hyst_c = cfg::PIT_ALARM_HYST_C;
     t.creep_above_sp_c = cfg::CREEP_ABOVE_SP_C;
     t.creep_s = cfg::CREEP_S;
+    t.pit_over_margin_c = cfg::PIT_OVER_MARGIN_C;
     t.pit_soft_limit_c = cfg::PIT_SOFT_LIMIT_C;
     return t;
 }
@@ -211,6 +212,9 @@ void controlTask(void*) {
                 case CmdType::MANUAL_DUTY:
                     if (sm.state() == control::State::MANUAL) sm.setManualDuty(c.u);
                     break;
+                case CmdType::TIMER:
+                    sm.setTimer(static_cast<uint32_t>(c.f) * 60u);
+                    break;
             }
         }
 
@@ -323,6 +327,7 @@ void setup() {
     h.on_setpoint = [](float c) { post(Cmd{CmdType::SETPOINT, c, 0}); };
     h.on_mode = [](uint8_t m) { post(Cmd{CmdType::MODE, 0.0f, m}); };
     h.on_manual_duty = [](uint8_t d) { post(Cmd{CmdType::MANUAL_DUTY, 0.0f, d}); };
+    h.on_timer = [](uint16_t min) { post(Cmd{CmdType::TIMER, static_cast<float>(min), 0}); };
     h.on_log_pop = popEvent;
 
     char info[64];

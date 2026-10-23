@@ -6,6 +6,7 @@
 //   FUEL_LOW / CREEP / pit deviation warnings, FIRE_OUT fault.
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 
 #include "pid.h"
@@ -44,6 +45,7 @@ constexpr uint8_t PIT_LOW = 1u << 1;    // pit <= setpoint - deviation
 constexpr uint8_t FUEL_LOW = 1u << 2;   // blower near max and pit falling: add charcoal
 constexpr uint8_t CREEP = 1u << 3;      // pit above setpoint with blower off: draft leak or too much lit fuel
 constexpr uint8_t LID_RISING = 1u << 4; // lid event detected as a fast rise (drum), not a drop
+constexpr uint8_t TIMER_DONE = 1u << 5; // cook timer reached zero; stays up until the timer is set again or the cook stops
 }  // namespace Warning
 
 const char* toString(State s);
@@ -89,7 +91,8 @@ struct Thresholds {
     float pit_alarm_hyst_c;
     float creep_above_sp_c;           // pit above setpoint by this with duty 0 ...
     uint32_t creep_s;                 // ... for this long -> CREEP warning
-    float pit_soft_limit_c;
+    float pit_over_margin_c;          // over-limit fault at setpoint + this ...
+    float pit_soft_limit_c;           // ... capped here (absolute, below the thermostat dial)
 };
 
 struct Sample {
@@ -122,6 +125,9 @@ public:
     void setThresholds(const Thresholds& t) { t_ = t; applyCaps(); }
     const Thresholds& thresholds() const { return t_; }
     void setLidDetectEnabled(bool en) { lid_detect_enabled_ = en; }
+    void setTimer(uint32_t seconds) { timer_s_ = static_cast<float>(seconds); timer_done_ = false; }  // 0 clears
+    uint32_t timerS() const { return static_cast<uint32_t>(timer_s_); }
+    float overLimitC() const { return std::min(setpoint_c_ + t_.pit_over_margin_c, t_.pit_soft_limit_c); }
 
     Command tick(const Sample& s);
 
@@ -160,6 +166,8 @@ private:
     float setpoint_c_ = 0.0f;
     uint8_t manual_duty_ = 0;
     bool lid_detect_enabled_ = true;
+    float timer_s_ = 0.0f;      // ponytail: plain countdown in the control tick, runs in any state
+    bool timer_done_ = false;
 
     // per-state bookkeeping
     float state_elapsed_s_ = 0.0f;

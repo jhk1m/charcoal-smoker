@@ -72,6 +72,11 @@ public:
         } else if (ch == s_.ch_manual_) {
             if (v.size() < 1) return;
             if (s_.h_.on_manual_duty) s_.h_.on_manual_duty(v.data()[0] > 100 ? 100 : v.data()[0]);
+        } else if (ch == s_.ch_timer_) {
+            if (v.size() < sizeof(uint16_t)) return;
+            uint16_t min;
+            memcpy(&min, v.data(), sizeof(min));
+            if (s_.h_.on_timer) s_.h_.on_timer(min);
         }
     }
 
@@ -118,6 +123,7 @@ bool Service::begin(const char* device_name, uint32_t passkey, const Handlers& h
     ch_log_ = svc->createCharacteristic(cfg::UUID_EVENT_LOG, P::READ_ENC, sizeof(evlog::Event));
     ch_info_ = svc->createCharacteristic(cfg::UUID_DEVICE_INFO, P::READ, 64);
     ch_warn_ = svc->createCharacteristic(cfg::UUID_WARNINGS, P::READ | P::NOTIFY, 1);
+    ch_timer_ = svc->createCharacteristic(cfg::UUID_TIMER, P::READ | P::WRITE_ENC | P::WRITE_AUTHEN, sizeof(uint16_t));
 
     ch_setpoint_->setCallbacks(cb);
     ch_mode_->setCallbacks(cb);

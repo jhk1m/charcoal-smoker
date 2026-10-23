@@ -82,6 +82,7 @@ static Thresholds firmwareThresholds(uint8_t max_duty) {
     t.pit_alarm_hyst_c = cfg::PIT_ALARM_HYST_C;
     t.creep_above_sp_c = cfg::CREEP_ABOVE_SP_C;
     t.creep_s = cfg::CREEP_S;
+    t.pit_over_margin_c = cfg::PIT_OVER_MARGIN_C;
     t.pit_soft_limit_c = cfg::PIT_SOFT_LIMIT_C;
     return t;
 }

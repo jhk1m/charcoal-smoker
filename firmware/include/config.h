@@ -67,10 +67,12 @@ constexpr uint32_t FAN_RUNAWAY_S = 5;
 
 // ---- Temperature limits (Celsius) ----
 constexpr float SETPOINT_MIN_C = 60.0f;
-constexpr float SETPOINT_MAX_C = 180.0f;
+constexpr float SETPOINT_MAX_C = 200.0f;   // short cooks (doc 06 section 6a); 400 F+ is sear, out of scope
 constexpr float SETPOINT_DEFAULT_C = 110.0f;
-// Software over-temp alarm. Must be BELOW the thermostat dial so software acts first (arch doc section 3).
-constexpr float PIT_SOFT_LIMIT_C = 200.0f;
+// Software over-temp alarm (PIT_OVER_LIMIT): pit >= min(setpoint + PIT_OVER_MARGIN_C, PIT_SOFT_LIMIT_C).
+// PIT_SOFT_LIMIT_C is the absolute cap and must stay BELOW the thermostat dial (270 C) so software acts first.
+constexpr float PIT_OVER_MARGIN_C = 40.0f;
+constexpr float PIT_SOFT_LIMIT_C = 240.0f;
 constexpr float PIT_SENSOR_MIN_VALID_C = -20.0f;
 constexpr float PIT_SENSOR_MAX_VALID_C = 400.0f;
 
@@ -138,6 +140,7 @@ constexpr const char* UUID_MANUAL_DUTY = "7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a0008";
 constexpr const char* UUID_EVENT_LOG   = "7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a0009";  // read, one record per read (chunked)
 constexpr const char* UUID_DEVICE_INFO = "7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a000a";  // utf8 string, read
 constexpr const char* UUID_WARNINGS    = "7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a000b";  // uint8 bitmask (control::Warning), read/notify
+constexpr const char* UUID_TIMER       = "7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a000c";  // uint16 minutes, read/write enc; 0 clears. TIMER_DONE arrives on WARNINGS
 constexpr uint32_t BLE_PASSKEY = 240813;  // OPEN: change before enclosure build; static passkey pairing
 constexpr uint32_t BLE_PAIRING_WINDOW_MS = 60 * 1000;
 

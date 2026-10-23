@@ -47,7 +47,8 @@ static Thresholds bench_thresholds() {
     t.pit_alarm_hyst_c = 1.0f;
     t.creep_above_sp_c = 14.0f;
     t.creep_s = 900;
-    t.pit_soft_limit_c = 200.0f;
+    t.pit_over_margin_c = 40.0f;
+    t.pit_soft_limit_c = 240.0f;
     return t;
 }
 
@@ -285,12 +286,47 @@ void test_sm_sensor_fault_forces_off() {
 }
 
 void test_sm_over_limit_faults() {
+    // Dynamic limit: setpoint + margin (110 + 40 = 150), capped at the absolute limit (240).
     StateMachine sm(bench_thresholds(), {4.0f, 0.0f, 0.0f});
     sm.startCook(110.0f);
     sm.tick(ok(100.0f));
-    Command c = sm.tick(ok(205.0f));
+    Command c = sm.tick(ok(149.0f));
+    TEST_ASSERT_TRUE(c.state != State::FAULT);
+    c = sm.tick(ok(150.0f));
     expectState(c, State::FAULT);
     TEST_ASSERT_EQUAL(static_cast<int>(Fault::PIT_OVER_LIMIT), static_cast<int>(c.fault));
+
+    StateMachine hot(bench_thresholds(), {4.0f, 0.0f, 0.0f});
+    hot.startCook(220.0f);   // above SETPOINT_MAX, but the cap must still hold
+    hot.tick(ok(100.0f));
+    c = hot.tick(ok(239.0f));
+    TEST_ASSERT_TRUE(c.state != State::FAULT);
+    c = hot.tick(ok(240.0f));
+    expectState(c, State::FAULT);
+}
+
+void test_sm_timer_warns_at_zero_and_clears_on_stop() {
+    StateMachine sm(bench_thresholds(), {4.0f, 0.0f, 0.0f});
+    sm.setTimer(3);
+    Command c = sm.tick(ok(100.0f));   // IDLE: timer still runs
+    TEST_ASSERT_EQUAL_UINT32(2, sm.timerS());
+    TEST_ASSERT_EQUAL_UINT8(0, c.warnings & Warning::TIMER_DONE);
+    sm.startCook(110.0f);
+    sm.tick(ok(100.0f));
+    c = sm.tick(ok(100.0f));
+    TEST_ASSERT_EQUAL_UINT32(0, sm.timerS());
+    TEST_ASSERT_TRUE((c.warnings & Warning::TIMER_DONE) != 0);
+    c = sm.tick(ok(100.0f));           // latched
+    TEST_ASSERT_TRUE((c.warnings & Warning::TIMER_DONE) != 0);
+    sm.setTimer(0);
+    c = sm.tick(ok(100.0f));
+    TEST_ASSERT_EQUAL_UINT8(0, c.warnings & Warning::TIMER_DONE);
+    sm.setTimer(1);
+    sm.tick(ok(100.0f));
+    TEST_ASSERT_TRUE((sm.warnings() & Warning::TIMER_DONE) != 0);
+    sm.stop();
+    sm.tick(ok(100.0f));
+    TEST_ASSERT_EQUAL_UINT8(0, sm.warnings() & Warning::TIMER_DONE);
 }
 
 void test_sm_ignite_timeout() {
@@ -664,5 +700,6 @@ int main() {
     RUN_TEST(test_fan_runaway_at_max_duty_cap_even_on_a_slow_fan);
     RUN_TEST(test_fan_coast_down_is_not_runaway);
     RUN_TEST(test_fan_unpowered_or_disabled_reports_nothing);
+    RUN_TEST(test_sm_timer_warns_at_zero_and_clears_on_stop);
     return UNITY_END();
 }
