@@ -167,7 +167,9 @@ $('setSp').onclick = () => { const b = new DataView(new ArrayBuffer(4)); b.setFl
 $('start').onclick = () => w('MODE', u8(0));
 $('stop').onclick = () => w('MODE', u8(2));
 $('clear').onclick = () => w('MODE', u8(3));
-$('setTm').onclick = () => { const b = new DataView(new ArrayBuffer(2)); b.setUint16(0, +$('tmIn').value, true); w('TIMER', b.buffer); };
+// Timer goes through the console channel (`a <min>`): the native 000c write never left Bluefy on iOS (2026-10-23)
+// while console writes did. The card still updates from the 000c notify.
+$('setTm').onclick = () => w('CONSOLE', enc.encode('a ' + Math.max(0, Math.round(+$('tmIn').value || 0))));
 const send = () => { const s = $('cmd').value.trim(); if (!s) return; w('CONSOLE', enc.encode(s)); $('cmd').value = ''; };
 $('send').onclick = send; $('cmd').onkeydown = e => { if (e.key === 'Enter') send(); };
 $('csv').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csvLines.join('\n') + '\n'], { type: 'text/csv' }));
