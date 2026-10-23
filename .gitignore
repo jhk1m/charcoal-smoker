@@ -11,3 +11,7 @@
 firmware/sim/sim
 # regenerable simulation traces; the PNGs and json summaries are kept
 firmware/sim/out/*.csv
+
+# BLE passkey, loaded by firmware/load_env.py
+firmware/.env
+

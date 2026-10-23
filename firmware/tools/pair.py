@@ -1,13 +1,13 @@
 """pair.py [COMx]  -- bond JASON-PC to SMOKER-CTRL with the static passkey (WinRT custom pairing, ProvidePin).
 Optionally pulses RTS on COMx first to reset the board, so the 60 s pairing window is open.
-Passkey is read from include/config.h, never typed on a command line."""
-import asyncio, re, sys, time
+Passkey is read from firmware/.env, never typed on a command line."""
+import asyncio, os, re, sys, time
 from bleak import BleakScanner
 from winrt.windows.devices.bluetooth import BluetoothLEDevice
 from winrt.windows.devices.enumeration import DevicePairingKinds, DevicePairingProtectionLevel
 
-CFG = __import__("os").path.join(__import__("os").path.dirname(__file__), "..", "include", "config.h")
-PIN = re.search(r"BLE_PASSKEY\s*=\s*(\d+)", open(CFG).read()).group(1)
+ENV = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")  # firmware/.env, git-ignored
+PIN = re.search(r"SMOKER_BLE_PASSKEY\s*=\s*(\d+)", open(ENV).read()).group(1)
 
 if len(sys.argv) > 1:
     import serial

@@ -143,7 +143,15 @@ constexpr const char* UUID_WARNINGS    = "7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a000b";
 constexpr const char* UUID_TIMER       = "7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a000c";  // uint16 minutes, read/write enc; 0 clears. TIMER_DONE arrives on WARNINGS
 constexpr const char* UUID_CONSOLE     = "7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a000d";  // utf8 console line, write enc+authen; replies notified on the same char (2026-10-22)
 constexpr const char* UUID_TELEMETRY   = "7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a000e";  // utf8 CSV line, notify at 1 Hz, same columns as the serial stream
-constexpr uint32_t BLE_PASSKEY = 240813;  // OPEN: change before enclosure build; static passkey pairing
+// Static passkey. Comes from firmware/.env (git-ignored) through load_env.py as -DSMOKER_BLE_PASSKEY=<6 digits>;
+// host builds (tests, sim) do not pair and get 0. The value committed before 2026-10-23 is retired.
+#if defined(ARDUINO) && !defined(SMOKER_BLE_PASSKEY)
+#error "SMOKER_BLE_PASSKEY not defined: copy firmware/.env.example to firmware/.env and set it"
+#endif
+#ifndef SMOKER_BLE_PASSKEY
+#define SMOKER_BLE_PASSKEY 0
+#endif
+constexpr uint32_t BLE_PASSKEY = SMOKER_BLE_PASSKEY;
 constexpr uint32_t BLE_PAIRING_WINDOW_MS = 60 * 1000;
 
 }  // namespace cfg
