@@ -120,7 +120,7 @@ Type into the monitor and press Enter. The env enables the send_on_enter filter 
 
 CSV columns:
 
-    t_s,state,fault,pit_raw_c,pit_filt_c,cj_c,duty_cmd,duty_applied,tc_fault_bits,warnings,out_ema,rate_c_s,fan_rpm
+    t_s,state,fault,pit_raw_c,pit_filt_c,cj_c,duty_cmd,duty_applied,tc_fault_bits,warnings,out_ema,rate_c_s,fan_rpm,timer_s
 
 Running the whole loop with no wiring: flash, then `T 0` (no fan means no tach, and without this the cook stops on BLOWER_STALL after 3 s), `t 25`, `s 110`, `c`, and watch IGNITE -> RAMP -> HOLD. `t 200` forces the software over-temp fault; `k` clears it.
 

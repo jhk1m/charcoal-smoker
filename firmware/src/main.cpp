@@ -49,7 +49,7 @@ ui::Console g_console;
 portMUX_TYPE g_log_mux = portMUX_INITIALIZER_UNLOCKED;
 
 const char* const CSV_HEADER =
-    "t_s,state,fault,pit_raw_c,pit_filt_c,cj_c,duty_cmd,duty_applied,tc_fault_bits,warnings,out_ema,rate_c_s,fan_rpm";
+    "t_s,state,fault,pit_raw_c,pit_filt_c,cj_c,duty_cmd,duty_applied,tc_fault_bits,warnings,out_ema,rate_c_s,fan_rpm,timer_s";
 
 control::Thresholds makeThresholds(const storage::Settings& s) {
     control::Thresholds t{};
@@ -289,10 +289,10 @@ void controlTask(void*) {
         // Serial telemetry (CSV) for bench logging / step-response capture. 'v' on the console mutes it.
         //    The same line goes out on BLE 000e whenever a peer is connected; 'v' mutes serial only.
         char csv[160];
-        snprintf(csv, sizeof(csv), "%lu,%s,%s,%.2f,%.2f,%.2f,%u,%u,0x%02x,0x%02x,%.1f,%.3f,%.0f\n", static_cast<unsigned long>(now / 1000),
+        snprintf(csv, sizeof(csv), "%lu,%s,%s,%.2f,%.2f,%.2f,%u,%u,0x%02x,0x%02x,%.1f,%.3f,%.0f,%lu\n", static_cast<unsigned long>(now / 1000),
                  control::toString(cmd.state), control::toString(cmd.fault), r.raw_c, r.filtered_c,
                  r.cold_junction_c, g_blower.commandedPercent(), g_blower.appliedPercent(), r.fault_bits,
-                 cmd.warnings, sm.outputEma(), sm.rateCPerS(), fan_mon.rpm());
+                 cmd.warnings, sm.outputEma(), sm.rateCPerS(), fan_mon.rpm(), static_cast<unsigned long>(sm.timerS()));
         if (g_console.csvEnabled()) Serial.print(csv);
         g_ble.publishTelemetry(csv);
     }

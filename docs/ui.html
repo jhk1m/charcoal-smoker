@@ -74,7 +74,7 @@ const $ = id => document.getElementById(id);
 const dec = new TextDecoder(), enc = new TextEncoder();
 let ch = {}, dev = null, consoleBuf = '', telemBuf = '';
 const hist = [];   // {t, pit, sp, duty}
-const csvLines = ['t_s,state,fault,pit_raw_c,pit_filt_c,cj_c,duty_cmd,duty_applied,tc_fault_bits,warnings,out_ema,rate_c_s,fan_rpm'];
+const csvLines = ['t_s,state,fault,pit_raw_c,pit_filt_c,cj_c,duty_cmd,duty_applied,tc_fault_bits,warnings,out_ema,rate_c_s,fan_rpm,timer_s'];
 let lastSp = NaN;
 
 function log(s) { const el = $('log'); el.textContent += s + '\n'; el.scrollTop = el.scrollHeight; }
@@ -101,6 +101,7 @@ function onTelem(e) {
     $('pit').textContent = pit.toFixed(1) + ' C';
     $('duty').textContent = f[6] + ' %';
     $('rpm').textContent = f[12];
+    if (f.length > 13) showTimer(Math.ceil(+f[13] / 60));  // timer from telemetry: Bluefy does not deliver the 000c notify
     showState(STATES.indexOf(f[1])); showFault(FAULTS.indexOf(f[2])); showWarn(parseInt(f[9], 16));
     hist.push({ t: Date.now(), pit, sp: lastSp, duty });
     while (hist.length && Date.now() - hist[0].t > 3600e3) hist.shift();

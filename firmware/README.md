@@ -142,7 +142,7 @@ Device name `SMOKER-CTRL`. Service `7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a0001`. Littl
 
 Security: bonding + MITM + LE Secure Connections, static passkey `cfg::BLE_PASSKEY` (change before enclosure build). New bonds are accepted only during the pairing window (120 s after boot in Phase 1; button-triggered later); the decision is taken when the PIN prompt appears, so slow typing is fine. Console `B` lists bonds, `B clear` deletes them all (then every phone and PC must forget the device and pair again). Every write is logged on serial. Outside the window the board presents a random passkey, so a late attempt fails at PIN entry and neither side stores anything (a bond that slips through anyway is deleted and the link dropped). If a phone ever shows "peer removed pairing information", forget the device on the phone and pair again inside the window.
 
-Serial CSV header: `t_s,state,fault,pit_raw_c,pit_filt_c,cj_c,duty_cmd,duty_applied,tc_fault_bits,warnings,out_ema,rate_c_s,fan_rpm`. Capture this during the step-response cook to derive PID gains.
+Serial CSV header: `t_s,state,fault,pit_raw_c,pit_filt_c,cj_c,duty_cmd,duty_applied,tc_fault_bits,warnings,out_ema,rate_c_s,fan_rpm,timer_s` (timer_s added 2026-10-23: seconds left on the cook timer, 0 when off). Capture this during the step-response cook to derive PID gains.
 
 ## OPEN items carried in code (config.h)
 
