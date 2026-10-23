@@ -22,7 +22,14 @@ public:
     }
 
     // Static passkey shown/entered on the phone. MITM + bonding + secure connections.
-    uint32_t onPassKeyDisplay() override { return cfg::BLE_PASSKEY; }
+    // Outside the pairing window a random passkey is presented, so a late attempt fails at PIN entry before any
+    // keys are stored. Deleting the bond afterwards (below) left the phone holding half a bond, and iOS then
+    // refused every later connect with "peer removed pairing information" (2026-10-23).
+    uint32_t onPassKeyDisplay() override {
+        if (s_.pairing_open_) return cfg::BLE_PASSKEY;
+        log_w("BLE passkey requested outside the pairing window: presenting a random one");
+        return esp_random() % 1000000u;
+    }
 
     void onAuthenticationComplete(NimBLEConnInfo& connInfo) override {
         if (!connInfo.isEncrypted()) {
