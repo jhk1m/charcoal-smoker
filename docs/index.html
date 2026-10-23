@@ -153,7 +153,9 @@ async function connect() {
 }
 
 // Writes need the bonded, encrypted link; the browser raises the pairing prompt on the first one if not bonded.
-const w = (k, buf) => ch[k].writeValueWithResponse(buf).catch(err => log('! ' + err.message));
+// Bluefy (iOS) and older Chrome only have writeValue; newer Chrome has writeValueWithResponse.
+const w = (k, buf) => (ch[k].writeValueWithResponse ? ch[k].writeValueWithResponse(buf) : ch[k].writeValue(buf))
+  .catch(err => log('! ' + k + ' write failed: ' + err.message));
 const u8 = v => Uint8Array.of(v);
 $('connect').onclick = connect;
 $('setSp').onclick = () => { const b = new DataView(new ArrayBuffer(4)); b.setFloat32(0, +$('spIn').value, true); w('SP', b.buffer); };
