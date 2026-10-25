@@ -114,7 +114,7 @@ without a reflash, and so the state machine can be exercised with nothing wired 
 | `X <pct>` | blower maximum duty, rebuilds the state machine thresholds, saved to NVS |
 | `o <C>` | pit probe offset from the ice / boiling check, saved to NVS |
 | `l <0/1>` | lid detection on or off |
-| `a <min>` | cook timer in minutes; TIMER_DONE warning (0x20) at zero; `a 0` clears. Not saved |
+| `a <min>` | cook timer in minutes; at zero the cook stops (IDLE, fan off) and TIMER_DONE (0x20) is raised; `a 0` clears. Runs in IDLE too, so set it at or after `c`. Not saved: a power-loss resume runs with no timer |
 | `i` | sensor identity check (doc 09 section 2a): re-probes the chip, on the MAX31856 writes type J, reads it back, restores K; prints tc, cold junction, delta and fault bits. Run once with the probe open (expect OPEN), once with T+ shorted to T- (expect delta within 2 C) |
 | `t <C> [C/s]` | simulate the probe at C, optionally ramping; `t off` returns to the real sensor |
 
@@ -138,7 +138,7 @@ Device name `SMOKER-CTRL`. Service `7a3b0000-6c1e-4f2a-9d5b-2c8e1f0a0001`. Littl
 | `0009` | 12 bytes | read(enc) | pops one event record per read; zero-length when empty |
 | `000a` | utf8 | read | device info string |
 | `000b` | uint8 | read, notify | warnings bitmask: bit0 PIT_HIGH, bit1 PIT_LOW, bit2 FUEL_LOW, bit3 CREEP, bit4 LID_RISING, bit5 TIMER_DONE |
-| `000c` | uint16 | read, write (enc) | cook timer in minutes; 0 clears. TIMER_DONE on `000b` when it reaches zero, latched until the timer is set again or the cook stops |
+| `000c` | uint16 | read, write (enc) | cook timer in minutes; 0 clears. at zero the cook stops (IDLE, fan off) and TIMER_DONE is raised on `000b`, latched until the timer is set again, a cook starts, or stop |
 
 Security: bonding + MITM + LE Secure Connections, static passkey `cfg::BLE_PASSKEY` (change before enclosure build). New bonds are accepted only during the pairing window (120 s after boot in Phase 1; button-triggered later); the decision is taken when the PIN prompt appears, so slow typing is fine. Console `B` lists bonds, `B clear` deletes them all (then every phone and PC must forget the device and pair again). Every write is logged on serial. Outside the window the board presents a random passkey, so a late attempt fails at PIN entry and neither side stores anything (a bond that slips through anyway is deleted and the link dropped). If a phone ever shows "peer removed pairing information", forget the device on the phone and pair again inside the window.
 

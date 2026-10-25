@@ -316,6 +316,8 @@ void test_sm_timer_warns_at_zero_and_clears_on_stop() {
     c = sm.tick(ok(100.0f));
     TEST_ASSERT_EQUAL_UINT32(0, sm.timerS());
     TEST_ASSERT_TRUE((c.warnings & Warning::TIMER_DONE) != 0);
+    expectState(c, State::IDLE);       // timer end stops the cook, fan off (2026-10-25)
+    TEST_ASSERT_EQUAL_UINT8(0, c.duty_pct);
     c = sm.tick(ok(100.0f));           // latched
     TEST_ASSERT_TRUE((c.warnings & Warning::TIMER_DONE) != 0);
     sm.setTimer(0);
@@ -327,6 +329,25 @@ void test_sm_timer_warns_at_zero_and_clears_on_stop() {
     sm.stop();
     sm.tick(ok(100.0f));
     TEST_ASSERT_EQUAL_UINT8(0, sm.warnings() & Warning::TIMER_DONE);
+    // Fault, then clear: TIMER_DONE stayed lit into the next cook on the bench (2026-10-24)
+    sm.startCook(110.0f);
+    sm.setTimer(2);
+    sm.tick(ok(100.0f));
+    sm.raiseFault(Fault::BLOWER_STALL);
+    sm.tick(ok(100.0f));               // timer ends inside FAULT
+    TEST_ASSERT_TRUE((sm.warnings() & Warning::TIMER_DONE) != 0);
+    sm.clearFault();
+    sm.tick(ok(100.0f));
+    TEST_ASSERT_EQUAL_UINT8(0, sm.warnings() & Warning::TIMER_DONE);
+    // A new cook drops the last cook's alert and runs until a timer ends it
+    sm.startCook(110.0f);
+    sm.setTimer(1);
+    sm.tick(ok(100.0f));
+    TEST_ASSERT_TRUE((sm.warnings() & Warning::TIMER_DONE) != 0);
+    sm.startCook(110.0f);
+    c = sm.tick(ok(100.0f));
+    TEST_ASSERT_EQUAL_UINT8(0, c.warnings & Warning::TIMER_DONE);
+    expectState(c, State::RAMP);
 }
 
 void test_sm_ignite_timeout() {

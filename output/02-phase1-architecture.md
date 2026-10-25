@@ -69,6 +69,7 @@ Secondary (Phase 2): two ThermoWorks Pro-Series thermistor probes on an ADS1115.
 - HOLD: PID up to the 60 percent max duty.
 - LID_OPEN: rate trigger (0.3 C/s at cook setpoints, scaled to 1.2 C/s at 260 C) with a fire-out guard, plus a drum-specific rising-lid variant; blower to 0; 30 s minimum; exit on setpoint, plateau or 240 s timeout, into RECOVERY.
 - Warnings (never touch the blower): PIT_HIGH, PIT_LOW, FUEL_LOW, CREEP, LID_RISING, TIMER_DONE (cook timer, 2026-10-22).
+- Cook timer end STOPS the cook (IDLE, fan off, cook_active cleared) and raises TIMER_DONE as the alert. DECIDED 2026-10-25 (Jason, after a bench test where the timer ran out and the fan kept going: "timer should stop fan"). Until then the timer was an alert only (doc 06 section 6a).
 - VALIDATED ON HARDWARE 2026-09-25 with the simulated probe: IGNITE -> RAMP -> HOLD -> LID_OPEN with the correct timings (doc 05).
 - Tuning: gains are still placeholders. Derive them from a step-response cook.
 

@@ -248,7 +248,8 @@ void controlTask(void*) {
         // 4. Actuate. FAULT/IDLE always force OFF regardless of cmd.duty_pct.
         if (cmd.state == control::State::FAULT || cmd.state == control::State::IDLE) g_blower.off();
         else g_blower.setDutyPercent(cmd.duty_pct, dt_s);
-        if (cmd.state == control::State::FAULT) setCookActive(false);
+        // A fault or the cook timer ended the cook: a reboot must not resume it.
+        if (cmd.state == control::State::FAULT || cmd.state == control::State::IDLE) setCookActive(false);
         g_ble.service(now);
 
         // 5. Publish.

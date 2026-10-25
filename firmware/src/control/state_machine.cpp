@@ -107,6 +107,7 @@ void StateMachine::transition(State next, const Sample& s) {
 void StateMachine::startCook(float setpoint_c) {
     if (state_ == State::FAULT) return;  // must clearFault() first
     setpoint_c_ = setpoint_c;
+    timer_done_ = false;   // the last cook's alert; a timer still counting keeps running
     Sample none{last_pit_c_, true, Fault::NONE, 0.0f};
     transition(State::IGNITE, none);
 }
@@ -147,6 +148,7 @@ void StateMachine::setManualDuty(uint8_t duty_pct) {
 void StateMachine::clearFault() {
     if (state_ != State::FAULT) return;
     fault_ = Fault::NONE;
+    setTimer(0);   // a fault ended the cook, same as stop(): a stale TIMER_DONE must not carry into the next one
     Sample none{last_pit_c_, true, Fault::NONE, 0.0f};
     transition(State::IDLE, none);
 }
@@ -308,7 +310,12 @@ Command StateMachine::tick(const Sample& s) {
     state_elapsed_s_ += s.dt_s;
     if (timer_s_ > 0.0f) {
         timer_s_ -= s.dt_s;
-        if (timer_s_ <= 0.0f) { timer_s_ = 0.0f; timer_done_ = true; }
+        if (timer_s_ <= 0.0f) {
+            timer_s_ = 0.0f;
+            timer_done_ = true;
+            // Timer end stops the cook, fan off (Jason, 2026-10-25). TIMER_DONE stays up in IDLE as the alert.
+            if (state_ != State::IDLE && state_ != State::FAULT) transition(State::IDLE, s);
+        }
     }
     if (s.sensor_ok) {
         updateRate(s);

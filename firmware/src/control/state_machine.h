@@ -45,7 +45,7 @@ constexpr uint8_t PIT_LOW = 1u << 1;    // pit <= setpoint - deviation
 constexpr uint8_t FUEL_LOW = 1u << 2;   // blower near max and pit falling: add charcoal
 constexpr uint8_t CREEP = 1u << 3;      // pit above setpoint with blower off: draft leak or too much lit fuel
 constexpr uint8_t LID_RISING = 1u << 4; // lid event detected as a fast rise (drum), not a drop
-constexpr uint8_t TIMER_DONE = 1u << 5; // cook timer reached zero; stays up until the timer is set again or the cook stops
+constexpr uint8_t TIMER_DONE = 1u << 5; // cook timer reached zero and stopped the cook; stays up until the timer is set, a cook starts, or stop
 }  // namespace Warning
 
 const char* toString(State s);

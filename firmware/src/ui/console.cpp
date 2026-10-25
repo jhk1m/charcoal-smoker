@@ -69,7 +69,7 @@ void Console::help() const {
     out_.println("#   g <kp> <ki> <kd>                     PID gains, saved to NVS");
     out_.println("#   f <hz>       blower PWM frequency    n <pct>  blower min start duty");
     out_.println("#   X <pct>      blower max duty         o <C>    probe offset (ice/boiling check)");
-    out_.println("#   l <0|1>      lid detection on/off    a <min>  cook timer, TIMER_DONE warning at zero; a 0 clears");
+    out_.println("#   l <0|1>      lid detection on/off    a <min>  cook timer, stops the cook at zero (TIMER_DONE); a 0 clears");
     out_.println("#   p <n>        fan tach pulses per revolution, saved to NVS");
     out_.println("#   T <0|1>      fan tach faults off/on. NOT saved: on again at every boot. T 0 = bench with no fan");
     out_.println("#   i            sensor identity check: run once with the probe open, once with T+ shorted to T-");
