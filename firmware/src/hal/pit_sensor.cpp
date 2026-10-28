@@ -122,8 +122,19 @@ PitReading PitSensor::read() {
     }
 
     r.fault_bits = dev_.readFault();
-    const float tc_c = dev_.readThermocoupleTemperature();
+    float tc_c = dev_.readThermocoupleTemperature();
     r.cold_junction_c = dev_.readCJTemperature();
+
+    // The chip resets when the fan supply switches on (bench 2026-10-27): it comes back at power-on defaults with
+    // conversions off and reads 0.00 C on both channels. Re-run begin() and wait one conversion before calling it
+    // open; an unpowered chip fails begin()'s type-K readback and still faults below.
+    if (r.fault_bits == 0 && tc_c == 0.0f && r.cold_junction_c == 0.0f && begin(min_valid_c_, max_valid_c_)) {
+        log_w("MAX31856 read all zero, re-initialised");
+        delay(200);  // first continuous conversion, 60 Hz filter; well inside the 5 s watchdog
+        r.fault_bits = dev_.readFault();
+        tc_c = dev_.readThermocoupleTemperature();
+        r.cold_junction_c = dev_.readCJTemperature();
+    }
     r.raw_c = tc_c + offset_c_;
 
     // A MAX31856 that loses power after boot reads every register as 0x00: no fault bit, 0.00 C on both
